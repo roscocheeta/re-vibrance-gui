@@ -1,3 +1,6 @@
+using ReVibranceGUI.Models;
+using ReVibranceGUI.Services;
+using ReVibranceGUI.Helpers;
 using System;
 using System.Linq;
 using System.Windows;

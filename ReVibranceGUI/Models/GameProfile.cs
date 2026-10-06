@@ -1,7 +1,7 @@
 using System.Windows.Media;
 using System.Text.Json.Serialization;
 
-namespace ReVibranceGUI
+namespace ReVibranceGUI.Models
 {
     public class GameProfile
     {
