@@ -18,8 +18,8 @@ namespace ReVibranceGUI
         private static readonly SolidColorBrush MixedBlue = Freeze(System.Windows.Media.Color.FromRgb(0x00, 0x78, 0xD7));
         private static readonly SolidColorBrush ActiveGreen = Freeze(System.Windows.Media.Color.FromRgb(0x4C, 0xAF, 0x50));
         private static readonly SolidColorBrush IdleGrey = Freeze(System.Windows.Media.Color.FromRgb(0x99, 0x99, 0x99));
-        private static readonly SolidColorBrush StopButtonGrey = Freeze(System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x33));
-        private static readonly SolidColorBrush StartButtonRed = Freeze(System.Windows.Media.Color.FromRgb(0xFF, 0x4B, 0x4B));
+        private static readonly SolidColorBrush StopButtonRed = Freeze(System.Windows.Media.Color.FromRgb(0xFF, 0x4B, 0x4B));
+        private static readonly SolidColorBrush StartButtonBlue = Freeze(System.Windows.Media.Color.FromRgb(0x00, 0x78, 0xD7));
 
         private readonly ModernNvidiaVibranceProxy _nvidiaProxy;
         private readonly ModernAmdVibranceProxy _amdProxy;
@@ -248,11 +248,12 @@ namespace ReVibranceGUI
                 Logger.Info($"Monitoring started for {TargetProcesses.Count} game(s).");
 
                 ToggleAutomationButton.Content = "STOP MONITORING";
-                ToggleAutomationButton.Background = StopButtonGrey;
+                ToggleAutomationButton.Background = StopButtonRed;
                 MonitoringDot.Fill = ActiveGreen;
                 MonitoringText.Text = "Active";
                 AddGameButton.IsEnabled = false;
-                ProcessListBox.IsEnabled = false;
+                ProcessListBox.IsHitTestVisible = false;
+                ProcessListBox.Opacity = 0.5;
             }
             else
             {
@@ -261,11 +262,12 @@ namespace ReVibranceGUI
                 Logger.Info("Monitoring stopped.");
 
                 ToggleAutomationButton.Content = "START MONITORING";
-                ToggleAutomationButton.Background = StartButtonRed;
+                ToggleAutomationButton.Background = StartButtonBlue;
                 MonitoringDot.Fill = IdleGrey;
                 MonitoringText.Text = "Idle";
                 AddGameButton.IsEnabled = true;
-                ProcessListBox.IsEnabled = true;
+                ProcessListBox.IsHitTestVisible = true;
+                ProcessListBox.Opacity = 1.0;
             }
         }
 
