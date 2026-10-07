@@ -159,11 +159,22 @@ namespace ReVibranceGUI.Scanners
         private string FindPrimaryExecutable(string installPath)
         {
             if (!Directory.Exists(installPath)) return null;
+            
+            // Reject relative paths/traversal (e.g. "..")
+            if (installPath.Contains("..")) return null;
 
             try
             {
+                var options = new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    MaxRecursionDepth = 3,
+                    IgnoreInaccessible = true,
+                    AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden | FileAttributes.System
+                };
+
                 // Search recursively for exes, as many games store exes in subfolders (e.g. Binaries/Win64)
-                var exes = Directory.GetFiles(installPath, "*.exe", SearchOption.AllDirectories);
+                var exes = Directory.GetFiles(installPath, "*.exe", options);
                 if (exes.Length > 0)
                 {
                     string bestMatch = null;
