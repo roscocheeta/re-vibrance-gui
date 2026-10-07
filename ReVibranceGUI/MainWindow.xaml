@@ -401,7 +401,12 @@
         <!-- Application Behavior -->
         <StackPanel Grid.Row="3" Margin="0,0,0,20">
             <CheckBox x:Name="RunOnStartupCheckBox" Content="Run on Startup" Foreground="{DynamicResource TextForeground}" Margin="0,0,0,8" Checked="RunOnStartupCheckBox_Checked" Unchecked="RunOnStartupCheckBox_Unchecked"/>
-            <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Minimize to system tray when monitoring" Foreground="{DynamicResource TextForeground}"/>
+            <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Minimize to system tray when monitoring" Foreground="{DynamicResource TextForeground}" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Pause Hotkey:" Foreground="{DynamicResource TextForeground}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBox x:Name="PauseHotkeyTextBox" Width="150" IsReadOnly="True" PreviewKeyDown="PauseHotkeyTextBox_PreviewKeyDown" Background="{DynamicResource SectionBackground}" Foreground="{DynamicResource TextForeground}" BorderBrush="{DynamicResource SecondaryButtonBackground}" Padding="4" VerticalAlignment="Center"/>
+                <Button Content="Clear" Margin="10,0,0,0" Click="ClearPauseHotkey_Click" Style="{StaticResource SecondaryButton}" VerticalAlignment="Center" Padding="8,4"/>
+            </StackPanel>
         </StackPanel>
 
         <!-- Action Area -->
