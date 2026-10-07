@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using IGCLWrapper;
+using System.Runtime.InteropServices;
 using ReVibranceGUI.Services;
 
 namespace ReVibranceGUI.Intel
@@ -9,20 +9,32 @@ namespace ReVibranceGUI.Intel
     public class ModernIntelVibranceProxy : IDisposable
     {
         public bool IsInitialized { get; private set; }
-        private IGCLApiHelper? _api;
-
-        // Adapter/media helpers are cached: enumerating devices through IGCL on every
-        // read/write (the UI polls every few seconds) is needlessly expensive.
+        private IntPtr _apiHandle = IntPtr.Zero;
+        private List<IntPtr>? _cache;
         private readonly object _cacheLock = new();
-        private List<(IGCLAdapterHelper Adapter, IGCLMediaHelper Media)>? _cache;
 
         public ModernIntelVibranceProxy()
         {
             try
             {
-                _api = IGCLApiHelper.Initialize();
-                IsInitialized = true;
-                Logger.Info("IGCL initialized.");
+                var initArgs = new ctl_init_args_t
+                {
+                    Size = (uint)Marshal.SizeOf(typeof(ctl_init_args_t)),
+                    Version = 0,
+                    flags = 0
+                };
+                
+                var result = ControlLib.ctlInit(ref initArgs, out _apiHandle);
+                if (result == ctl_result_t.CTL_RESULT_SUCCESS && _apiHandle != IntPtr.Zero)
+                {
+                    IsInitialized = true;
+                    Logger.Info("IGCL initialized via lightweight P/Invoke.");
+                }
+                else
+                {
+                    IsInitialized = false;
+                    Logger.Info($"IGCL init failed ({result}); Intel support disabled.");
+                }
             }
             catch (Exception ex)
             {
@@ -31,17 +43,21 @@ namespace ReVibranceGUI.Intel
             }
         }
 
-        /// <summary>Returns the cached adapters, enumerating once on first use.</summary>
-        private List<(IGCLAdapterHelper Adapter, IGCLMediaHelper Media)> GetAdapters()
+        private List<IntPtr> GetAdapters()
         {
             lock (_cacheLock)
             {
                 if (_cache != null) return _cache;
 
-                var list = new List<(IGCLAdapterHelper, IGCLMediaHelper)>();
-                foreach (var adapter in _api!.EnumerateAdapters())
+                var list = new List<IntPtr>();
+                uint count = 0;
+                if (ControlLib.ctlEnumerateDevices(_apiHandle, ref count, null) == ctl_result_t.CTL_RESULT_SUCCESS && count > 0)
                 {
-                    list.Add((adapter, _api.GetMediaHelper(adapter)));
+                    var devices = new IntPtr[count];
+                    if (ControlLib.ctlEnumerateDevices(_apiHandle, ref count, devices) == ctl_result_t.CTL_RESULT_SUCCESS)
+                    {
+                        list.AddRange(devices);
+                    }
                 }
                 _cache = list;
                 return _cache;
@@ -52,19 +68,13 @@ namespace ReVibranceGUI.Intel
         {
             lock (_cacheLock)
             {
-                if (_cache == null) return;
-                foreach (var (adapter, media) in _cache)
-                {
-                    media.Dispose();
-                    adapter.Dispose();
-                }
                 _cache = null;
             }
         }
 
         public string GetGpuNames()
         {
-            if (!IsInitialized || _api == null) return "Intel GPU";
+            if (!IsInitialized || _apiHandle == IntPtr.Zero) return "Intel GPU";
             try
             {
                 if (GetAdapters().Count > 0)
@@ -80,19 +90,82 @@ namespace ReVibranceGUI.Intel
             return "Intel GPU";
         }
 
+        private ctl_video_processing_standard_color_correction_t? GetColorCorrection(IntPtr adapter)
+        {
+            int size = Marshal.SizeOf(typeof(ctl_video_processing_standard_color_correction_t));
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            try
+            {
+                var scc = new ctl_video_processing_standard_color_correction_t
+                {
+                    Size = (uint)size,
+                    Version = 0
+                };
+                Marshal.StructureToPtr(scc, ptr, false);
+
+                var getset = new ctl_video_processing_feature_getset_t
+                {
+                    Size = (uint)Marshal.SizeOf(typeof(ctl_video_processing_feature_getset_t)),
+                    Version = 0,
+                    FeatureType = ctl_video_processing_feature_t.CTL_VIDEO_PROCESSING_FEATURE_STANDARD_COLOR_CORRECTION,
+                    bSet = false,
+                    ValueType = ctl_property_value_type_t.CTL_PROPERTY_VALUE_TYPE_CUSTOM,
+                    CustomValueSize = size,
+                    pCustomValue = ptr
+                };
+
+                if (ControlLib.ctlGetSetVideoProcessingFeature(adapter, ref getset) == ctl_result_t.CTL_RESULT_SUCCESS)
+                {
+                    return Marshal.PtrToStructure<ctl_video_processing_standard_color_correction_t>(ptr);
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
+            return null;
+        }
+
+        private bool SetColorCorrection(IntPtr adapter, ctl_video_processing_standard_color_correction_t scc)
+        {
+            int size = Marshal.SizeOf(typeof(ctl_video_processing_standard_color_correction_t));
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.StructureToPtr(scc, ptr, false);
+
+                var getset = new ctl_video_processing_feature_getset_t
+                {
+                    Size = (uint)Marshal.SizeOf(typeof(ctl_video_processing_feature_getset_t)),
+                    Version = 0,
+                    FeatureType = ctl_video_processing_feature_t.CTL_VIDEO_PROCESSING_FEATURE_STANDARD_COLOR_CORRECTION,
+                    bSet = true,
+                    ValueType = ctl_property_value_type_t.CTL_PROPERTY_VALUE_TYPE_CUSTOM,
+                    CustomValueSize = size,
+                    pCustomValue = ptr
+                };
+
+                return ControlLib.ctlGetSetVideoProcessingFeature(adapter, ref getset) == ctl_result_t.CTL_RESULT_SUCCESS;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
+        }
+
         public int GetCurrentVibranceLevel()
         {
-            if (!IsInitialized || _api == null) return 50;
+            if (!IsInitialized || _apiHandle == IntPtr.Zero) return 50;
 
             try
             {
                 var primary = GetAdapters().FirstOrDefault();
-                if (primary.Media != null)
+                if (primary != IntPtr.Zero)
                 {
-                    var currentSettings = primary.Media.GetStandardColorCorrection();
+                    var currentSettings = GetColorCorrection(primary);
                     if (currentSettings.HasValue)
                     {
-                        return VibranceMath.IntelToUi(currentSettings.Value.Saturation);
+                        return VibranceMath.IntelToUi(currentSettings.Value.saturation);
                     }
                 }
             }
@@ -104,28 +177,23 @@ namespace ReVibranceGUI.Intel
             return 50;
         }
 
-        /// <remarks>
-        /// IGCL color correction is adapter-wide, so <paramref name="targetDisplay"/> cannot be honoured;
-        /// the change always applies to every Intel adapter.
-        /// </remarks>
         public void SetVibranceLevel(int level, string targetDisplay = "All")
         {
-            if (!IsInitialized || _api == null) return;
+            if (!IsInitialized || _apiHandle == IntPtr.Zero) return;
 
             try
             {
                 float saturation = VibranceMath.UiToIntel(level);
-                foreach (var (_, media) in GetAdapters())
+                foreach (var adapter in GetAdapters())
                 {
-                    var currentSettings = media.GetStandardColorCorrection();
-
+                    var currentSettings = GetColorCorrection(adapter);
                     if (currentSettings.HasValue)
                     {
                         var newSettings = currentSettings.Value;
-                        newSettings.Enable = true;
-                        newSettings.Saturation = saturation;
+                        newSettings.standard_color_correction_enable = true;
+                        newSettings.saturation = saturation;
 
-                        media.SetStandardColorCorrection(newSettings);
+                        SetColorCorrection(adapter, newSettings);
                     }
                 }
             }
@@ -139,8 +207,12 @@ namespace ReVibranceGUI.Intel
         public void Dispose()
         {
             InvalidateCache();
-            _api?.Dispose();
-            _api = null;
+            if (_apiHandle != IntPtr.Zero)
+            {
+                try { ControlLib.ctlClose(_apiHandle); } catch { }
+                _apiHandle = IntPtr.Zero;
+            }
+            IsInitialized = false;
         }
     }
 }

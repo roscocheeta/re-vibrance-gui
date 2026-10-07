@@ -26,8 +26,4 @@
     <InternalsVisibleTo Include="ReVibranceGUI.Tests" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\IGCLWrapper\IGCLWrapper\IGCLWrapper.csproj" />
-  </ItemGroup>
-
 </Project>
