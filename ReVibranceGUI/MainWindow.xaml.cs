@@ -30,6 +30,10 @@ namespace ReVibranceGUI
         private readonly DispatcherTimer _saveDebounce;
         private VibranceAutomator? _automator;
         private bool _isInitializing = true;
+        private bool _syncInFlight;
+
+        // Serialises vendor-driver calls: the sync poll reads off the UI thread while ApplyProfile writes on it.
+        private readonly object _hardwareLock = new();
 
         public ObservableCollection<GameProfile> TargetProcesses { get; } = new();
         public List<string> AvailableResolutions { get; } = DisplayManager.GetSupportedResolutions().Select(r => r.ToString()).ToList();
@@ -67,17 +71,33 @@ namespace ReVibranceGUI
             MinimizeToTrayCheckBox.Checked += (_, _) => ScheduleSave();
             MinimizeToTrayCheckBox.Unchecked += (_, _) => ScheduleSave();
 
-            // Background poller to sync external NVIDIA Control Panel changes
+            // Background poller to sync external NVIDIA Control Panel changes.
+            // The driver read runs off the UI thread and is skipped while the window is hidden.
             var syncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-            syncTimer.Tick += (_, _) =>
+            syncTimer.Tick += async (_, _) =>
             {
-                if (!IsAutomatorRunning && !WindowsVibranceSlider.IsMouseCaptureWithin)
+                if (_syncInFlight || IsAutomatorRunning || !IsVisible || WindowState == WindowState.Minimized
+                    || WindowsVibranceSlider.IsMouseCaptureWithin)
                 {
-                    int currentHwLevel = InitializeHardwareFooter();
-                    if (currentHwLevel != (int)WindowsVibranceSlider.Value)
+                    return;
+                }
+
+                _syncInFlight = true;
+                try
+                {
+                    int currentHwLevel = await Task.Run(ReadDesktopVibranceLevel);
+                    if (!IsAutomatorRunning && currentHwLevel != (int)WindowsVibranceSlider.Value)
                     {
                         WindowsVibranceSlider.Value = currentHwLevel;
                     }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warn("Hardware vibrance sync failed", ex);
+                }
+                finally
+                {
+                    _syncInFlight = false;
                 }
             };
             syncTimer.Start();
@@ -111,7 +131,22 @@ namespace ReVibranceGUI
             return icon;
         }
 
-        /// <summary>Populates the footer and returns the current desktop vibrance level.</summary>
+        /// <summary>
+        /// Reads the current desktop vibrance from the first available vendor (NVIDIA, then AMD, then Intel).
+        /// Safe to call from a background thread; takes the hardware lock.
+        /// </summary>
+        private int ReadDesktopVibranceLevel()
+        {
+            lock (_hardwareLock)
+            {
+                if (_nvidiaProxy.IsInitialized) return _nvidiaProxy.GetCurrentVibranceLevel();
+                if (_amdProxy.IsInitialized) return _amdProxy.GetCurrentVibranceLevel();
+                if (_intelProxy.IsInitialized) return _intelProxy.GetCurrentVibranceLevel();
+                return VibranceMath.UiMin;
+            }
+        }
+
+        /// <summary>Populates the footer (once, at startup) and returns the current desktop vibrance level.</summary>
         private int InitializeHardwareFooter()
         {
             bool nv = _nvidiaProxy.IsInitialized;
@@ -119,7 +154,6 @@ namespace ReVibranceGUI
             bool intel = _intelProxy.IsInitialized;
 
             var gpus = new List<string>();
-            int level = 50;
 
             if (nv) gpus.Add(_nvidiaProxy.GetGpuNames());
             if (amd) gpus.Add(_amdProxy.GetGpuNames());
@@ -135,28 +169,12 @@ namespace ReVibranceGUI
 
             HardwareText.Text = string.Join(" & ", gpus);
 
-            if (gpus.Count > 1)
-            {
-                HardwareIcon.Fill = MixedBlue;
-                level = nv ? _nvidiaProxy.GetCurrentVibranceLevel() : (amd ? _amdProxy.GetCurrentVibranceLevel() : _intelProxy.GetCurrentVibranceLevel());
-            }
-            else if (nv)
-            {
-                HardwareIcon.Fill = NvidiaGreen;
-                level = _nvidiaProxy.GetCurrentVibranceLevel();
-            }
-            else if (amd)
-            {
-                HardwareIcon.Fill = AmdRed;
-                level = _amdProxy.GetCurrentVibranceLevel();
-            }
-            else if (intel)
-            {
-                HardwareIcon.Fill = IntelBlue;
-                level = _intelProxy.GetCurrentVibranceLevel();
-            }
+            if (gpus.Count > 1) HardwareIcon.Fill = MixedBlue;
+            else if (nv) HardwareIcon.Fill = NvidiaGreen;
+            else if (amd) HardwareIcon.Fill = AmdRed;
+            else HardwareIcon.Fill = IntelBlue;
 
-            return level;
+            return ReadDesktopVibranceLevel();
         }
 
         // ──────────────────────────── Settings ───────────────────────────
@@ -230,9 +248,12 @@ namespace ReVibranceGUI
                 int vibranceLevel = profile?.VibranceLevel ?? (int)WindowsVibranceSlider.Value;
                 string targetDisplay = profile?.TargetDisplay ?? "All";
 
-                if (_nvidiaProxy.IsInitialized) _nvidiaProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
-                if (_amdProxy.IsInitialized) _amdProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
-                if (_intelProxy.IsInitialized) _intelProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
+                lock (_hardwareLock)
+                {
+                    if (_nvidiaProxy.IsInitialized) _nvidiaProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
+                    if (_amdProxy.IsInitialized) _amdProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
+                    if (_intelProxy.IsInitialized) _intelProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
+                }
 
                 var res = profile != null && profile.ChangeResolution ? DisplayResolution.Parse(profile.TargetResolution) : null;
                 if (res != null)
