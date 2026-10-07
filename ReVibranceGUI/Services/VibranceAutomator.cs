@@ -16,58 +16,50 @@ namespace ReVibranceGUI.Services
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
-        private readonly Action<int> _setVibranceAction;
+        private readonly Action<GameProfile?> _applyProfileAction;
         private readonly Func<string?> _getForegroundProcessName;
         private readonly TimeSpan _pollInterval;
 
-        // R2: the vibrance action is invoked from both the UI thread (UpdateLevels/UpdateProfiles/Stop)
-        // and the background loop. This lock serializes driver calls and state transitions.
         private readonly object _sync = new();
 
-        // R2: replaced atomically (immutable snapshot), so readers never see a half-built dictionary.
-        private volatile IReadOnlyDictionary<string, int> _targetProcesses;
-        private volatile int _windowsVibranceLevel;
+        private volatile IReadOnlyDictionary<string, GameProfile> _targetProcesses;
         private string? _currentlyAppliedProcess;
 
         private CancellationTokenSource? _cts;
         private Task? _monitorTask;
 
-        public VibranceAutomator(IEnumerable<GameProfile> targetProcesses, int windowsVibrance, Action<int> setVibranceAction)
-            : this(targetProcesses, windowsVibrance, setVibranceAction, GetForegroundProcessName, TimeSpan.FromMilliseconds(500))
+        public VibranceAutomator(IEnumerable<GameProfile> targetProcesses, Action<GameProfile?> applyProfileAction)
+            : this(targetProcesses, applyProfileAction, GetForegroundProcessName, TimeSpan.FromMilliseconds(500))
         {
         }
 
-        /// <summary>Test seam: inject the foreground-process lookup and poll interval.</summary>
         internal VibranceAutomator(
             IEnumerable<GameProfile> targetProcesses,
-            int windowsVibrance,
-            Action<int> setVibranceAction,
+            Action<GameProfile?> applyProfileAction,
             Func<string?> getForegroundProcessName,
             TimeSpan pollInterval)
         {
             _targetProcesses = BuildMap(targetProcesses);
-            _windowsVibranceLevel = windowsVibrance;
-            _setVibranceAction = setVibranceAction;
+            _applyProfileAction = applyProfileAction;
             _getForegroundProcessName = getForegroundProcessName;
             _pollInterval = pollInterval;
         }
 
         public bool IsRunning => _monitorTask is { IsCompleted: false };
 
-        /// <summary>"Game.EXE" / "game.exe" / "game" → "game" (matches Process.ProcessName).</summary>
         public static string NormalizeProcessName(string exeName)
         {
             string p = exeName.Trim().ToLowerInvariant();
             return p.EndsWith(".exe", StringComparison.Ordinal) ? p[..^4] : p;
         }
 
-        internal static IReadOnlyDictionary<string, int> BuildMap(IEnumerable<GameProfile> profiles)
+        internal static IReadOnlyDictionary<string, GameProfile> BuildMap(IEnumerable<GameProfile> profiles)
         {
-            var map = new Dictionary<string, int>();
+            var map = new Dictionary<string, GameProfile>();
             foreach (var profile in profiles)
             {
                 if (string.IsNullOrWhiteSpace(profile.ExeName)) continue;
-                map.TryAdd(NormalizeProcessName(profile.ExeName), profile.VibranceLevel);
+                map.TryAdd(NormalizeProcessName(profile.ExeName), profile);
             }
             return map;
         }
@@ -84,8 +76,6 @@ namespace ReVibranceGUI.Services
             _cts?.Cancel();
             try
             {
-                // C4: MonitorLoop now swallows its own cancellation, but guard anyway so
-                // a cancelled/faulted task can never throw onto the UI thread.
                 _monitorTask?.Wait(TimeSpan.FromSeconds(1));
             }
             catch (AggregateException ex)
@@ -103,20 +93,8 @@ namespace ReVibranceGUI.Services
             {
                 if (_currentlyAppliedProcess != null)
                 {
-                    SafeApply(_windowsVibranceLevel);
+                    SafeApply(null);
                     _currentlyAppliedProcess = null;
-                }
-            }
-        }
-
-        public void UpdateLevels(int windowsVibrance)
-        {
-            _windowsVibranceLevel = windowsVibrance;
-            lock (_sync)
-            {
-                if (_currentlyAppliedProcess == null)
-                {
-                    SafeApply(windowsVibrance);
                 }
             }
         }
@@ -128,20 +106,18 @@ namespace ReVibranceGUI.Services
             {
                 if (_currentlyAppliedProcess == null) return;
 
-                if (_targetProcesses.TryGetValue(_currentlyAppliedProcess, out int level))
+                if (_targetProcesses.TryGetValue(_currentlyAppliedProcess, out var profile))
                 {
-                    SafeApply(level);
+                    SafeApply(profile);
                 }
                 else
                 {
-                    // The focused game was removed from the list: revert to desktop level.
-                    SafeApply(_windowsVibranceLevel);
+                    SafeApply(null);
                     _currentlyAppliedProcess = null;
                 }
             }
         }
 
-        /// <summary>One polling iteration. Internal so tests can drive it deterministically.</summary>
         internal void Tick()
         {
             string? processName = _getForegroundProcessName();
@@ -150,17 +126,17 @@ namespace ReVibranceGUI.Services
             var targets = _targetProcesses;
             lock (_sync)
             {
-                if (targets.TryGetValue(processName, out int level))
+                if (targets.TryGetValue(processName, out var profile))
                 {
                     if (_currentlyAppliedProcess != processName)
                     {
-                        SafeApply(level);
+                        SafeApply(profile);
                         _currentlyAppliedProcess = processName;
                     }
                 }
                 else if (_currentlyAppliedProcess != null)
                 {
-                    SafeApply(_windowsVibranceLevel);
+                    SafeApply(null);
                     _currentlyAppliedProcess = null;
                 }
             }
@@ -186,19 +162,18 @@ namespace ReVibranceGUI.Services
             }
             catch (OperationCanceledException)
             {
-                // C4: normal shutdown path; previously this escaped and made Stop() throw.
             }
         }
 
-        private void SafeApply(int level)
+        private void SafeApply(GameProfile? profile)
         {
             try
             {
-                _setVibranceAction(level);
+                _applyProfileAction(profile);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to apply vibrance level {level}", ex);
+                Logger.Error($"Failed to apply profile", ex);
             }
         }
 

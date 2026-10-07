@@ -53,13 +53,26 @@ namespace ReVibranceGUI.AMD
             return VibranceMath.UiMin;
         }
 
-        public void SetVibranceLevel(int level)
+        public void SetVibranceLevel(int level, string targetDisplay = "All")
         {
             if (!IsInitialized || _amdAdapter == null) return;
 
             try
             {
-                _amdAdapter.SetSaturationOnAllDisplays(VibranceMath.UiToAmd(level));
+                int amdLevel = VibranceMath.UiToAmd(level);
+                if (targetDisplay == "All")
+                {
+                    _amdAdapter.SetSaturationOnAllDisplays(amdLevel);
+                }
+                else if (targetDisplay == "Primary")
+                {
+                    var primary = DisplayManager.GetDisplays().FirstOrDefault(d => d.IsPrimary);
+                    if (primary != null)
+                    {
+                        // The AMD wrapper expects the display name
+                        _amdAdapter.SetSaturationOnDisplay(amdLevel, primary.DeviceName);
+                    }
+                }
             }
             catch (Exception ex)
             {

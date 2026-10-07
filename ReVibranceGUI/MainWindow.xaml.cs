@@ -180,11 +180,27 @@ namespace ReVibranceGUI
 
         // ──────────────────────────── Vibrance ───────────────────────────
 
-        private void SetVibranceLevel(int level)
+        private void ApplyProfile(GameProfile? profile)
         {
-            // Intentionally not else-if: mixed NVIDIA + AMD systems get both.
-            if (_nvidiaProxy.IsInitialized) _nvidiaProxy.SetVibranceLevel(level);
-            if (_amdProxy.IsInitialized) _amdProxy.SetVibranceLevel(level);
+            Dispatcher.InvokeAsync(() =>
+            {
+                int vibranceLevel = profile?.VibranceLevel ?? (int)WindowsVibranceSlider.Value;
+                string targetDisplay = profile?.TargetDisplay ?? "All";
+
+                if (_nvidiaProxy.IsInitialized) _nvidiaProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
+                if (_amdProxy.IsInitialized) _amdProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
+
+                if (profile != null && profile.ChangeResolution && profile.ResolutionWidth > 0 && profile.ResolutionHeight > 0)
+                {
+                    string? devName = targetDisplay == "Primary" ? DisplayManager.GetDisplays().FirstOrDefault(d => d.IsPrimary)?.DeviceName : null;
+                    DisplayManager.SetResolution(devName, profile.ResolutionWidth, profile.ResolutionHeight, profile.RefreshRate);
+                }
+                else
+                {
+                    string? devName = targetDisplay == "Primary" ? DisplayManager.GetDisplays().FirstOrDefault(d => d.IsPrimary)?.DeviceName : null;
+                    DisplayManager.RestoreResolution(devName);
+                }
+            });
         }
 
         private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -196,15 +212,23 @@ namespace ReVibranceGUI
 
             if (_automator != null)
             {
-                _automator.UpdateLevels(level);
+                // Live preview is now driven by tick or apply
+                ApplyProfile(null);
             }
             else
             {
-                SetVibranceLevel(level); // Live desktop preview while not monitoring.
+                ApplyProfile(null); // Live desktop preview while not monitoring.
             }
         }
 
         private void GameSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_isInitializing) return;
+            _automator?.UpdateProfiles(TargetProcesses.ToList());
+            ScheduleSave();
+        }
+
+        private void Setting_Changed(object sender, RoutedEventArgs e)
         {
             if (_isInitializing) return;
             _automator?.UpdateProfiles(TargetProcesses.ToList());
@@ -217,7 +241,7 @@ namespace ReVibranceGUI
             {
                 if (TargetProcesses.Count == 0) return;
 
-                _automator = new VibranceAutomator(TargetProcesses.ToList(), (int)WindowsVibranceSlider.Value, SetVibranceLevel);
+                _automator = new VibranceAutomator(TargetProcesses.ToList(), ApplyProfile);
                 _automator.Start();
                 Logger.Info($"Monitoring started for {TargetProcesses.Count} game(s).");
 

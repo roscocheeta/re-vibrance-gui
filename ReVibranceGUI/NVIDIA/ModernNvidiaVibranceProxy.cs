@@ -59,16 +59,21 @@ namespace ReVibranceGUI.Nvidia
             return VibranceMath.UiMin;
         }
 
-        public void SetVibranceLevel(int level)
+        public void SetVibranceLevel(int level, string targetDisplay = "All")
         {
             if (!IsInitialized) return;
 
             try
             {
                 int nativeLevel = VibranceMath.UiToNvidia(level);
+                string? primaryDeviceName = targetDisplay == "Primary" ? DisplayManager.GetDisplays().FirstOrDefault(d => d.IsPrimary)?.DeviceName : null;
+
                 foreach (var display in Display.GetDisplays())
                 {
-                    display.DigitalVibranceControl.CurrentLevel = nativeLevel;
+                    if (targetDisplay == "All" || (targetDisplay == "Primary" && display.Name == primaryDeviceName))
+                    {
+                        display.DigitalVibranceControl.CurrentLevel = nativeLevel;
+                    }
                 }
             }
             catch (Exception ex)
