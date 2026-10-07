@@ -2,6 +2,7 @@ using ReVibranceGUI.AMD;
 using ReVibranceGUI.Helpers;
 using ReVibranceGUI.Models;
 using ReVibranceGUI.Nvidia;
+using ReVibranceGUI.Intel;
 using ReVibranceGUI.Services;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -15,6 +16,7 @@ namespace ReVibranceGUI
     {
         private static readonly SolidColorBrush NvidiaGreen = Freeze(System.Windows.Media.Color.FromRgb(0x76, 0xB9, 0x00));
         private static readonly SolidColorBrush AmdRed = Freeze(System.Windows.Media.Color.FromRgb(0xED, 0x1C, 0x24));
+        private static readonly SolidColorBrush IntelBlue = Freeze(System.Windows.Media.Color.FromRgb(0x00, 0x68, 0xB5));
         private static readonly SolidColorBrush MixedBlue = Freeze(System.Windows.Media.Color.FromRgb(0x00, 0x78, 0xD7));
         private static readonly SolidColorBrush ActiveGreen = Freeze(System.Windows.Media.Color.FromRgb(0x4C, 0xAF, 0x50));
         private static readonly SolidColorBrush IdleGrey = Freeze(System.Windows.Media.Color.FromRgb(0x99, 0x99, 0x99));
@@ -23,6 +25,7 @@ namespace ReVibranceGUI
 
         private readonly ModernNvidiaVibranceProxy _nvidiaProxy;
         private readonly ModernAmdVibranceProxy _amdProxy;
+        private readonly ModernIntelVibranceProxy _intelProxy;
         private readonly System.Windows.Forms.NotifyIcon _notifyIcon;
         private readonly DispatcherTimer _saveDebounce;
         private VibranceAutomator? _automator;
@@ -49,6 +52,7 @@ namespace ReVibranceGUI
 
             _nvidiaProxy = new ModernNvidiaVibranceProxy();
             _amdProxy = new ModernAmdVibranceProxy();
+            _intelProxy = new ModernIntelVibranceProxy();
             
             int hwLevel = InitializeHardwareFooter();
             WindowsVibranceSlider.Value = hwLevel;
@@ -112,30 +116,47 @@ namespace ReVibranceGUI
         {
             bool nv = _nvidiaProxy.IsInitialized;
             bool amd = _amdProxy.IsInitialized;
+            bool intel = _intelProxy.IsInitialized;
 
-            if (nv && amd)
+            var gpus = new List<string>();
+            int level = 50;
+
+            if (nv) gpus.Add(_nvidiaProxy.GetGpuNames());
+            if (amd) gpus.Add(_amdProxy.GetGpuNames());
+            if (intel) gpus.Add(_intelProxy.GetGpuNames());
+
+            if (gpus.Count == 0)
             {
-                HardwareText.Text = $"{_nvidiaProxy.GetGpuNames()} & {_amdProxy.GetGpuNames()}";
+                HardwareText.Text = "No Supported GPU Detected";
+                ToggleAutomationButton.IsEnabled = false;
+                Logger.Warn("No supported GPU detected.");
+                return VibranceMath.UiMin;
+            }
+
+            HardwareText.Text = string.Join(" & ", gpus);
+
+            if (gpus.Count > 1)
+            {
                 HardwareIcon.Fill = MixedBlue;
-                return _nvidiaProxy.GetCurrentVibranceLevel();
+                level = nv ? _nvidiaProxy.GetCurrentVibranceLevel() : (amd ? _amdProxy.GetCurrentVibranceLevel() : _intelProxy.GetCurrentVibranceLevel());
             }
-            if (nv)
+            else if (nv)
             {
-                HardwareText.Text = _nvidiaProxy.GetGpuNames();
                 HardwareIcon.Fill = NvidiaGreen;
-                return _nvidiaProxy.GetCurrentVibranceLevel();
+                level = _nvidiaProxy.GetCurrentVibranceLevel();
             }
-            if (amd)
+            else if (amd)
             {
-                HardwareText.Text = _amdProxy.GetGpuNames();
                 HardwareIcon.Fill = AmdRed;
-                return _amdProxy.GetCurrentVibranceLevel();
+                level = _amdProxy.GetCurrentVibranceLevel();
+            }
+            else if (intel)
+            {
+                HardwareIcon.Fill = IntelBlue;
+                level = _intelProxy.GetCurrentVibranceLevel();
             }
 
-            HardwareText.Text = "No Supported GPU Detected";
-            ToggleAutomationButton.IsEnabled = false;
-            Logger.Warn("No supported GPU detected.");
-            return VibranceMath.UiMin;
+            return level;
         }
 
         // ──────────────────────────── Settings ───────────────────────────
@@ -211,6 +232,7 @@ namespace ReVibranceGUI
 
                 if (_nvidiaProxy.IsInitialized) _nvidiaProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
                 if (_amdProxy.IsInitialized) _amdProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
+                if (_intelProxy.IsInitialized) _intelProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
 
                 var res = profile != null && profile.ChangeResolution ? DisplayResolution.Parse(profile.TargetResolution) : null;
                 if (res != null)
