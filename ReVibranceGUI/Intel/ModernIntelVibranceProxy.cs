@@ -80,13 +80,13 @@ namespace ReVibranceGUI.Intel
                 {
                     var mediaHelper = _api.GetMediaHelper(adapter);
                     var currentSettings = mediaHelper.GetStandardColorCorrection();
-                    
+
                     if (currentSettings.HasValue)
                     {
                         var newSettings = currentSettings.Value;
                         newSettings.Enable = true;
                         newSettings.Saturation = (float)level; // 0.0f to 100.0f
-                        
+
                         mediaHelper.SetStandardColorCorrection(newSettings);
                     }
                 }

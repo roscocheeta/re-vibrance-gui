@@ -1,6 +1,6 @@
-using ReVibranceGUI.Models;
 using System.IO;
 using System.Text.Json;
+using ReVibranceGUI.Models;
 
 namespace ReVibranceGUI.Services
 {

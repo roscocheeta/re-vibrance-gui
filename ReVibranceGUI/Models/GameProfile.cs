@@ -1,5 +1,5 @@
-using System.Windows.Media;
 using System.Text.Json.Serialization;
+using System.Windows.Media;
 
 namespace ReVibranceGUI.Models
 {

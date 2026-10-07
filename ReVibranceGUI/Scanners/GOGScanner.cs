@@ -11,7 +11,7 @@ namespace ReVibranceGUI.Scanners
         public IEnumerable<GameInstall> Scan()
         {
             var games = new List<GameInstall>();
-            
+
             try
             {
                 using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\GOG.com\Games"))

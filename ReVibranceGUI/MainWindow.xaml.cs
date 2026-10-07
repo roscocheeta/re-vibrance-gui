@@ -1,14 +1,14 @@
-using ReVibranceGUI.AMD;
-using ReVibranceGUI.Helpers;
-using ReVibranceGUI.Models;
-using ReVibranceGUI.Nvidia;
-using ReVibranceGUI.Intel;
-using ReVibranceGUI.Services;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ReVibranceGUI.AMD;
+using ReVibranceGUI.Helpers;
+using ReVibranceGUI.Intel;
+using ReVibranceGUI.Models;
+using ReVibranceGUI.Nvidia;
+using ReVibranceGUI.Services;
 
 namespace ReVibranceGUI
 {
@@ -53,7 +53,7 @@ namespace ReVibranceGUI
             _nvidiaProxy = new ModernNvidiaVibranceProxy();
             _amdProxy = new ModernAmdVibranceProxy();
             _intelProxy = new ModernIntelVibranceProxy();
-            
+
             int hwLevel = InitializeHardwareFooter();
             WindowsVibranceSlider.Value = hwLevel;
             if (WindowsVibranceValue != null)
@@ -69,7 +69,7 @@ namespace ReVibranceGUI
 
             // Background poller to sync external NVIDIA Control Panel changes
             var syncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-            syncTimer.Tick += (_, _) => 
+            syncTimer.Tick += (_, _) =>
             {
                 if (!IsAutomatorRunning && !WindowsVibranceSlider.IsMouseCaptureWithin)
                 {
