@@ -401,7 +401,19 @@
         <!-- Application Behavior -->
         <StackPanel Grid.Row="3" Margin="0,0,0,20">
             <CheckBox x:Name="RunOnStartupCheckBox" Content="Run on Startup" Foreground="{DynamicResource TextForeground}" Margin="0,0,0,8" Checked="RunOnStartupCheckBox_Checked" Unchecked="RunOnStartupCheckBox_Unchecked"/>
-            <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Minimize to system tray when monitoring" Foreground="{DynamicResource TextForeground}"/>
+            <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Minimize to system tray when monitoring" Foreground="{DynamicResource TextForeground}" Margin="0,0,0,8"/>
+            <Grid MinHeight="28">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox x:Name="EnablePauseHotkeyCheckBox" Content="Enable global pause hotkey" Foreground="{DynamicResource TextForeground}" VerticalAlignment="Center" Checked="EnablePauseHotkeyCheckBox_Changed" Unchecked="EnablePauseHotkeyCheckBox_Changed"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Visibility="{Binding IsChecked, ElementName=EnablePauseHotkeyCheckBox, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Right">
+                    <TextBlock Text="Shortcut:" Foreground="{DynamicResource SecondaryTextForeground}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="PauseHotkeyTextBox" Width="120" IsReadOnly="True" PreviewKeyDown="PauseHotkeyTextBox_PreviewKeyDown" Background="{DynamicResource SectionBackground}" Foreground="{DynamicResource TextForeground}" BorderBrush="{DynamicResource SecondaryButtonBackground}" Padding="4,2" VerticalAlignment="Center"/>
+                    <Button Content="Clear" Margin="8,0,0,0" Click="ClearPauseHotkey_Click" Style="{StaticResource SecondaryButton}" VerticalAlignment="Center" Padding="8,2"/>
+                </StackPanel>
+            </Grid>
         </StackPanel>
 
         <!-- Action Area -->
@@ -418,7 +430,14 @@
                     </Grid.ColumnDefinitions>
                     
                     <Path x:Name="HardwareIcon" Data="M10,2H14V4H16V6H18V8H20V10H18V14H20V16H18V18H16V20H14V22H10V20H8V18H6V16H4V14H6V10H4V8H6V6H8V4H10V2M14,6H10V18H14V6Z" Fill="{DynamicResource SecondaryTextForeground}" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="HardwareText" Grid.Column="1" Text="Searching for GPU..." FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextForeground}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="HardwareText" Text="Searching for GPU..." FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextForeground}" Margin="0,0,15,0"/>
+                        <TextBlock x:Name="UpdateTextBlock" Visibility="Collapsed" FontSize="12">
+                            <Hyperlink NavigateUri="https://github.com/roscocheeta/re-vibrance-gui/releases/latest" RequestNavigate="Hyperlink_RequestNavigate" Foreground="#009688" TextDecorations="None" FontWeight="Bold">
+                                🎁 Update Available!
+                            </Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
                     
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse x:Name="MonitoringDot" Width="8" Height="8" Fill="#999999" Margin="0,0,6,0"/>
