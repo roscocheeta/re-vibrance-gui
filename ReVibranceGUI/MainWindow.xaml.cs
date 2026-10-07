@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using ReVibranceGUI.AMD;
@@ -29,6 +30,7 @@ namespace ReVibranceGUI
         private readonly System.Windows.Forms.NotifyIcon _notifyIcon;
         private readonly DispatcherTimer _saveDebounce;
         private VibranceAutomator? _automator;
+        private GlobalHotkey? _pauseHotkey;
         private bool _isInitializing = true;
         private bool _syncInFlight;
 
@@ -106,6 +108,93 @@ namespace ReVibranceGUI
         }
 
         // ───────────────────────────── Setup ─────────────────────────────
+        
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            
+            _pauseHotkey = new GlobalHotkey(this, () => Dispatcher.Invoke(() => ToggleMonitoring(true)));
+            
+            var settings = SettingsManager.Load();
+            if (!string.IsNullOrEmpty(settings.PauseHotkey))
+            {
+                PauseHotkeyTextBox.Text = settings.PauseHotkey;
+                RegisterHotkeyFromString(settings.PauseHotkey);
+            }
+
+            CheckForUpdatesAsync();
+        }
+
+        private async void CheckForUpdatesAsync()
+        {
+            try
+            {
+                using var client = new System.Net.Http.HttpClient();
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("ReVibranceGUI-Updater/1.0");
+                client.Timeout = TimeSpan.FromSeconds(5);
+
+                var response = await client.GetStringAsync("https://api.github.com/repos/roscocheeta/re-vibrance-gui/releases/latest");
+                using var doc = System.Text.Json.JsonDocument.Parse(response);
+                if (doc.RootElement.TryGetProperty("tag_name", out var tagProp))
+                {
+                    string tagName = tagProp.GetString() ?? "";
+                    if (tagName.StartsWith("v")) tagName = tagName.Substring(1);
+
+                    if (Version.TryParse(tagName, out Version? latestVersion))
+                    {
+                        var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                        if (currentVersion != null && latestVersion > currentVersion)
+                        {
+                            Dispatcher.Invoke(() => UpdateTextBlock.Visibility = Visibility.Visible);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn("Failed to check for updates", ex);
+            }
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to open update link", ex);
+            }
+            e.Handled = true;
+        }
+
+        private void RegisterHotkeyFromString(string hotkeyStr)
+        {
+            try
+            {
+                var parts = hotkeyStr.Split('+');
+                Key key = Key.None;
+                ModifierKeys modifiers = ModifierKeys.None;
+
+                foreach (var part in parts)
+                {
+                    if (Enum.TryParse(part, out ModifierKeys mod))
+                        modifiers |= mod;
+                    else if (Enum.TryParse(part, out Key k))
+                        key = k;
+                }
+
+                if (key != Key.None)
+                {
+                    _pauseHotkey?.Register(key, modifiers);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"Failed to parse hotkey {hotkeyStr}", ex);
+            }
+        }
 
         private System.Windows.Forms.NotifyIcon CreateTrayIcon()
         {
@@ -121,6 +210,17 @@ namespace ReVibranceGUI
             {
                 icon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath);
             }
+
+            var contextMenu = new System.Windows.Forms.ContextMenuStrip();
+            var toggleItem = new System.Windows.Forms.ToolStripMenuItem("Start / Stop Monitoring");
+            toggleItem.Click += (_, _) => Dispatcher.Invoke(() => ToggleMonitoring());
+            contextMenu.Items.Add(toggleItem);
+            
+            var exitItem = new System.Windows.Forms.ToolStripMenuItem("Exit");
+            exitItem.Click += (_, _) => Dispatcher.Invoke(Close);
+            contextMenu.Items.Add(exitItem);
+            
+            icon.ContextMenuStrip = contextMenu;
 
             icon.DoubleClick += (_, _) =>
             {
@@ -183,6 +283,7 @@ namespace ReVibranceGUI
         {
             var settings = SettingsManager.Load();
             MinimizeToTrayCheckBox.IsChecked = settings.MinimizeToTray;
+            EnablePauseHotkeyCheckBox.IsChecked = settings.EnablePauseHotkey;
 
             foreach (var profile in settings.GameProfiles)
             {
@@ -211,6 +312,8 @@ namespace ReVibranceGUI
             {
                 MinimizeToTray = MinimizeToTrayCheckBox.IsChecked == true,
                 Theme = ThemeLightBtn.IsChecked == true ? "Light" : ThemeDarkBtn.IsChecked == true ? "Dark" : "Auto",
+                EnablePauseHotkey = EnablePauseHotkeyCheckBox.IsChecked == true,
+                PauseHotkey = PauseHotkeyTextBox.Text,
                 GameProfiles = TargetProcesses.ToList()
             });
         }
@@ -231,6 +334,8 @@ namespace ReVibranceGUI
             _saveDebounce.Stop();
             SaveSettings();
 
+            _pauseHotkey?.Dispose();
+            
             _automator?.Stop();
             _automator = null;
 
@@ -303,7 +408,7 @@ namespace ReVibranceGUI
             ScheduleSave();
         }
 
-        private void ToggleAutomationButton_Click(object sender, RoutedEventArgs e)
+        private void ToggleMonitoring(bool fromHotkey = false)
         {
             if (!IsAutomatorRunning)
             {
@@ -321,7 +426,7 @@ namespace ReVibranceGUI
                 ProcessListBox.IsHitTestVisible = false;
                 ProcessListBox.Opacity = 0.5;
 
-                if (MinimizeToTrayCheckBox.IsChecked == true)
+                if (!fromHotkey && MinimizeToTrayCheckBox.IsChecked == true)
                 {
                     WindowState = WindowState.Minimized;
                 }
@@ -335,11 +440,76 @@ namespace ReVibranceGUI
                 ToggleAutomationButton.Content = "START MONITORING";
                 ToggleAutomationButton.Background = StartButtonBlue;
                 MonitoringDot.Fill = IdleGrey;
-                MonitoringText.Text = "Idle";
+                MonitoringText.Text = fromHotkey ? "Paused" : "Idle";
                 AddGameButton.IsEnabled = true;
                 ProcessListBox.IsHitTestVisible = true;
                 ProcessListBox.Opacity = 1.0;
             }
+        }
+
+        private void ToggleAutomationButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleMonitoring();
+        }
+
+        private void PauseHotkeyTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            e.Handled = true;
+            
+            var key = (e.Key == Key.System ? e.SystemKey : e.Key);
+            
+            if (key == Key.LeftShift || key == Key.RightShift ||
+                key == Key.LeftCtrl || key == Key.RightCtrl ||
+                key == Key.LeftAlt || key == Key.RightAlt ||
+                key == Key.LWin || key == Key.RWin)
+            {
+                return;
+            }
+
+            var modifiers = Keyboard.Modifiers;
+            _pauseHotkey?.Unregister();
+            
+            if (_pauseHotkey != null && _pauseHotkey.Register(key, modifiers))
+            {
+                string keyName = key.ToString();
+                string modName = modifiers == ModifierKeys.None ? "" : modifiers.ToString().Replace(", ", "+") + "+";
+                PauseHotkeyTextBox.Text = $"{modName}{keyName}";
+                
+                var settings = SettingsManager.Load();
+                settings.PauseHotkey = PauseHotkeyTextBox.Text;
+                SettingsManager.Save(settings);
+            }
+            else
+            {
+                PauseHotkeyTextBox.Text = "Failed to register";
+            }
+        }
+
+        private void ClearPauseHotkey_Click(object sender, RoutedEventArgs e)
+        {
+            _pauseHotkey?.Unregister();
+            PauseHotkeyTextBox.Text = string.Empty;
+            var settings = SettingsManager.Load();
+            settings.PauseHotkey = string.Empty;
+            SettingsManager.Save(settings);
+        }
+
+        private void EnablePauseHotkeyCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+            
+            if (EnablePauseHotkeyCheckBox.IsChecked == true)
+            {
+                if (!string.IsNullOrEmpty(PauseHotkeyTextBox.Text) && PauseHotkeyTextBox.Text != "Failed to register")
+                {
+                    RegisterHotkeyFromString(PauseHotkeyTextBox.Text);
+                }
+            }
+            else
+            {
+                _pauseHotkey?.Unregister();
+            }
+            ScheduleSave();
         }
 
         // ─────────────────────────── Game list ───────────────────────────
