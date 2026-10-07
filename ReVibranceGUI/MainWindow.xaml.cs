@@ -63,6 +63,21 @@ namespace ReVibranceGUI
             MinimizeToTrayCheckBox.Checked += (_, _) => ScheduleSave();
             MinimizeToTrayCheckBox.Unchecked += (_, _) => ScheduleSave();
 
+            // Background poller to sync external NVIDIA Control Panel changes
+            var syncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            syncTimer.Tick += (_, _) => 
+            {
+                if (!IsAutomatorRunning && !WindowsVibranceSlider.IsMouseCaptureWithin)
+                {
+                    int currentHwLevel = InitializeHardwareFooter();
+                    if (currentHwLevel != (int)WindowsVibranceSlider.Value)
+                    {
+                        WindowsVibranceSlider.Value = currentHwLevel;
+                    }
+                }
+            };
+            syncTimer.Start();
+
             _isInitializing = false;
         }
 
