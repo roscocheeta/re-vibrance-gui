@@ -275,6 +275,11 @@ namespace ReVibranceGUI
                 AddGameButton.IsEnabled = false;
                 ProcessListBox.IsHitTestVisible = false;
                 ProcessListBox.Opacity = 0.5;
+
+                if (MinimizeToTrayCheckBox.IsChecked == true)
+                {
+                    WindowState = WindowState.Minimized;
+                }
             }
             else
             {
