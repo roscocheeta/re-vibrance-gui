@@ -27,7 +27,7 @@ namespace ReVibranceGUI.Scanners
         {
             var games = new List<GameInstall>();
             string steamPath = GetSteamPath();
-            
+
             if (string.IsNullOrEmpty(steamPath) || !Directory.Exists(steamPath))
             {
                 return games;
@@ -64,7 +64,7 @@ namespace ReVibranceGUI.Scanners
                         {
                             game.ExePath = Path.Combine(game.InstallPath, game.ExeName);
                         }
-                        
+
                         games.Add(game);
                     }
                 }
@@ -96,7 +96,7 @@ namespace ReVibranceGUI.Scanners
         {
             var folders = new List<string> { steamPath }; // Main install dir is always a library
             string vdfPath = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
-            
+
             if (File.Exists(vdfPath))
             {
                 try
@@ -127,7 +127,7 @@ namespace ReVibranceGUI.Scanners
             try
             {
                 string content = File.ReadAllText(manifestPath);
-                
+
                 string name = Regex.Match(content, "\"name\"\\s+\"([^\"]+)\"").Groups[1].Value;
                 string installDir = Regex.Match(content, "\"installdir\"\\s+\"([^\"]+)\"").Groups[1].Value;
 
@@ -169,22 +169,22 @@ namespace ReVibranceGUI.Scanners
                     string bestMatch = null;
                     long largestSize = 0;
 
-                    foreach(var exe in exes)
+                    foreach (var exe in exes)
                     {
                         string name = Path.GetFileName(exe).ToLower();
-                        
-                        if (name.Contains("crash") || name.Contains("dxsetup") || 
-                            name.Contains("vcredist") || name.Contains("unins") || 
+
+                        if (name.Contains("crash") || name.Contains("dxsetup") ||
+                            name.Contains("vcredist") || name.Contains("unins") ||
                             name.Contains("launcher") || name.Contains("battleye") ||
                             name.Contains("eadesktop") || name.Contains("anticheat") ||
-                            name.Contains("installer") || name.Contains("setup") || 
+                            name.Contains("installer") || name.Contains("setup") ||
                             name.Contains("tool") || name.Contains("overlay"))
                         {
                             continue;
                         }
 
                         // Heuristic: The main game exe is usually the largest one
-                        try 
+                        try
                         {
                             long size = new FileInfo(exe).Length;
                             if (size > largestSize)
@@ -195,7 +195,7 @@ namespace ReVibranceGUI.Scanners
                         }
                         catch { }
                     }
-                    
+
                     return bestMatch ?? exes[0];
                 }
             }

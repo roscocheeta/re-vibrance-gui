@@ -1,6 +1,6 @@
-using ReVibranceGUI.Models;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using ReVibranceGUI.Models;
 
 namespace ReVibranceGUI.Services
 {

@@ -24,6 +24,8 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Setup .NET 8
       uses: actions/setup-dotnet@v4
@@ -32,6 +34,11 @@ jobs:
 
     - name: Restore dependencies
       run: dotnet restore ReVibranceGUI.sln
+
+    - name: Verify Formatting
+      run: |
+        dotnet format ReVibranceGUI/ReVibranceGUI.csproj --verify-no-changes
+        dotnet format ReVibranceGUI.Tests/ReVibranceGUI.Tests.csproj --verify-no-changes
 
     - name: Build
       run: dotnet build ReVibranceGUI.sln --configuration Release --no-restore

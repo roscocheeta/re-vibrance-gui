@@ -44,7 +44,7 @@ namespace ReVibranceGUI.Scanners
                         return Path.Combine(appDataPath, "Manifests");
                     }
                 }
-                
+
                 // Try Current User hive
                 using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Epic Games\EpicGamesLauncher"))
                 {
@@ -68,7 +68,7 @@ namespace ReVibranceGUI.Scanners
                 using (JsonDocument doc = JsonDocument.Parse(json))
                 {
                     var root = doc.RootElement;
-                    
+
                     // Epic items are somewhat messy. We need to check if it's an actual game and not a redistributable/DLC.
                     if (root.TryGetProperty("bIsApplication", out var isApp) && isApp.GetBoolean() == true)
                     {

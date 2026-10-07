@@ -42,11 +42,14 @@ namespace ReVibranceGUI.Nvidia
 
         public int GetCurrentVibranceLevel()
         {
-            if (!IsInitialized) return VibranceMath.UiMin;
+            if (!IsInitialized) return 50;
 
             try
             {
-                var primary = Display.GetDisplays().FirstOrDefault();
+                string? primaryDeviceName = DisplayManager.GetDisplays().FirstOrDefault(d => d.IsPrimary)?.DeviceName;
+                var displays = Display.GetDisplays();
+                var primary = displays.FirstOrDefault(d => d.Name == primaryDeviceName) ?? displays.FirstOrDefault();
+
                 if (primary != null)
                 {
                     return VibranceMath.NvidiaToUi(primary.DigitalVibranceControl.CurrentLevel);
@@ -56,7 +59,7 @@ namespace ReVibranceGUI.Nvidia
             {
                 Logger.Warn("Error reading NVIDIA vibrance level", ex);
             }
-            return VibranceMath.UiMin;
+            return 50;
         }
 
         public void SetVibranceLevel(int level, string targetDisplay = "All")

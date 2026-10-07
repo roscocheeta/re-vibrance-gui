@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReVibranceGUI", "ReVibrance
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReVibranceGUI.Tests", "ReVibranceGUI.Tests\ReVibranceGUI.Tests.csproj", "{F644896B-FAEC-4601-A78B-FD4802ADDB44}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IGCLWrapper", "IGCLWrapper", "{33AC1455-FE4B-446F-9782-EA17037D4BD2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IGCLWrapper", "IGCLWrapper\IGCLWrapper\IGCLWrapper.csproj", "{6614AD0B-D78F-4F00-854D-F20CFD4C4652}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +28,12 @@ Global
 		{F644896B-FAEC-4601-A78B-FD4802ADDB44}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F644896B-FAEC-4601-A78B-FD4802ADDB44}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F644896B-FAEC-4601-A78B-FD4802ADDB44}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6614AD0B-D78F-4F00-854D-F20CFD4C4652}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6614AD0B-D78F-4F00-854D-F20CFD4C4652}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6614AD0B-D78F-4F00-854D-F20CFD4C4652}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6614AD0B-D78F-4F00-854D-F20CFD4C4652}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6614AD0B-D78F-4F00-854D-F20CFD4C4652} = {33AC1455-FE4B-446F-9782-EA17037D4BD2}
 	EndGlobalSection
 EndGlobal

@@ -1,13 +1,14 @@
-using ReVibranceGUI.AMD;
-using ReVibranceGUI.Helpers;
-using ReVibranceGUI.Models;
-using ReVibranceGUI.Nvidia;
-using ReVibranceGUI.Services;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ReVibranceGUI.AMD;
+using ReVibranceGUI.Helpers;
+using ReVibranceGUI.Intel;
+using ReVibranceGUI.Models;
+using ReVibranceGUI.Nvidia;
+using ReVibranceGUI.Services;
 
 namespace ReVibranceGUI
 {
@@ -15,14 +16,16 @@ namespace ReVibranceGUI
     {
         private static readonly SolidColorBrush NvidiaGreen = Freeze(System.Windows.Media.Color.FromRgb(0x76, 0xB9, 0x00));
         private static readonly SolidColorBrush AmdRed = Freeze(System.Windows.Media.Color.FromRgb(0xED, 0x1C, 0x24));
+        private static readonly SolidColorBrush IntelBlue = Freeze(System.Windows.Media.Color.FromRgb(0x00, 0x68, 0xB5));
         private static readonly SolidColorBrush MixedBlue = Freeze(System.Windows.Media.Color.FromRgb(0x00, 0x78, 0xD7));
         private static readonly SolidColorBrush ActiveGreen = Freeze(System.Windows.Media.Color.FromRgb(0x4C, 0xAF, 0x50));
         private static readonly SolidColorBrush IdleGrey = Freeze(System.Windows.Media.Color.FromRgb(0x99, 0x99, 0x99));
-        private static readonly SolidColorBrush StopButtonGrey = Freeze(System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x33));
-        private static readonly SolidColorBrush StartButtonRed = Freeze(System.Windows.Media.Color.FromRgb(0xFF, 0x4B, 0x4B));
+        private static readonly SolidColorBrush StopButtonRed = Freeze(System.Windows.Media.Color.FromRgb(0xFF, 0x4B, 0x4B));
+        private static readonly SolidColorBrush StartButtonBlue = Freeze(System.Windows.Media.Color.FromRgb(0x00, 0x96, 0x88));
 
         private readonly ModernNvidiaVibranceProxy _nvidiaProxy;
         private readonly ModernAmdVibranceProxy _amdProxy;
+        private readonly ModernIntelVibranceProxy _intelProxy;
         private readonly System.Windows.Forms.NotifyIcon _notifyIcon;
         private readonly DispatcherTimer _saveDebounce;
         private VibranceAutomator? _automator;
@@ -49,13 +52,35 @@ namespace ReVibranceGUI
 
             _nvidiaProxy = new ModernNvidiaVibranceProxy();
             _amdProxy = new ModernAmdVibranceProxy();
-            WindowsVibranceSlider.Value = InitializeHardwareFooter();
+            _intelProxy = new ModernIntelVibranceProxy();
+
+            int hwLevel = InitializeHardwareFooter();
+            WindowsVibranceSlider.Value = hwLevel;
+            if (WindowsVibranceValue != null)
+            {
+                WindowsVibranceValue.Text = $"{hwLevel}%";
+            }
 
             LoadSettings();
 
             TargetProcesses.CollectionChanged += (_, _) => ScheduleSave();
             MinimizeToTrayCheckBox.Checked += (_, _) => ScheduleSave();
             MinimizeToTrayCheckBox.Unchecked += (_, _) => ScheduleSave();
+
+            // Background poller to sync external NVIDIA Control Panel changes
+            var syncTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            syncTimer.Tick += (_, _) =>
+            {
+                if (!IsAutomatorRunning && !WindowsVibranceSlider.IsMouseCaptureWithin)
+                {
+                    int currentHwLevel = InitializeHardwareFooter();
+                    if (currentHwLevel != (int)WindowsVibranceSlider.Value)
+                    {
+                        WindowsVibranceSlider.Value = currentHwLevel;
+                    }
+                }
+            };
+            syncTimer.Start();
 
             _isInitializing = false;
         }
@@ -91,30 +116,47 @@ namespace ReVibranceGUI
         {
             bool nv = _nvidiaProxy.IsInitialized;
             bool amd = _amdProxy.IsInitialized;
+            bool intel = _intelProxy.IsInitialized;
 
-            if (nv && amd)
+            var gpus = new List<string>();
+            int level = 50;
+
+            if (nv) gpus.Add(_nvidiaProxy.GetGpuNames());
+            if (amd) gpus.Add(_amdProxy.GetGpuNames());
+            if (intel) gpus.Add(_intelProxy.GetGpuNames());
+
+            if (gpus.Count == 0)
             {
-                HardwareText.Text = $"{_nvidiaProxy.GetGpuNames()} & {_amdProxy.GetGpuNames()}";
+                HardwareText.Text = "No Supported GPU Detected";
+                ToggleAutomationButton.IsEnabled = false;
+                Logger.Warn("No supported GPU detected.");
+                return VibranceMath.UiMin;
+            }
+
+            HardwareText.Text = string.Join(" & ", gpus);
+
+            if (gpus.Count > 1)
+            {
                 HardwareIcon.Fill = MixedBlue;
-                return _nvidiaProxy.GetCurrentVibranceLevel();
+                level = nv ? _nvidiaProxy.GetCurrentVibranceLevel() : (amd ? _amdProxy.GetCurrentVibranceLevel() : _intelProxy.GetCurrentVibranceLevel());
             }
-            if (nv)
+            else if (nv)
             {
-                HardwareText.Text = _nvidiaProxy.GetGpuNames();
                 HardwareIcon.Fill = NvidiaGreen;
-                return _nvidiaProxy.GetCurrentVibranceLevel();
+                level = _nvidiaProxy.GetCurrentVibranceLevel();
             }
-            if (amd)
+            else if (amd)
             {
-                HardwareText.Text = _amdProxy.GetGpuNames();
                 HardwareIcon.Fill = AmdRed;
-                return _amdProxy.GetCurrentVibranceLevel();
+                level = _amdProxy.GetCurrentVibranceLevel();
+            }
+            else if (intel)
+            {
+                HardwareIcon.Fill = IntelBlue;
+                level = _intelProxy.GetCurrentVibranceLevel();
             }
 
-            HardwareText.Text = "No Supported GPU Detected";
-            ToggleAutomationButton.IsEnabled = false;
-            Logger.Warn("No supported GPU detected.");
-            return VibranceMath.UiMin;
+            return level;
         }
 
         // ──────────────────────────── Settings ───────────────────────────
@@ -190,6 +232,7 @@ namespace ReVibranceGUI
 
                 if (_nvidiaProxy.IsInitialized) _nvidiaProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
                 if (_amdProxy.IsInitialized) _amdProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
+                if (_intelProxy.IsInitialized) _intelProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
 
                 var res = profile != null && profile.ChangeResolution ? DisplayResolution.Parse(profile.TargetResolution) : null;
                 if (res != null)
@@ -248,11 +291,17 @@ namespace ReVibranceGUI
                 Logger.Info($"Monitoring started for {TargetProcesses.Count} game(s).");
 
                 ToggleAutomationButton.Content = "STOP MONITORING";
-                ToggleAutomationButton.Background = StopButtonGrey;
+                ToggleAutomationButton.Background = StopButtonRed;
                 MonitoringDot.Fill = ActiveGreen;
                 MonitoringText.Text = "Active";
                 AddGameButton.IsEnabled = false;
-                ProcessListBox.IsEnabled = false;
+                ProcessListBox.IsHitTestVisible = false;
+                ProcessListBox.Opacity = 0.5;
+
+                if (MinimizeToTrayCheckBox.IsChecked == true)
+                {
+                    WindowState = WindowState.Minimized;
+                }
             }
             else
             {
@@ -261,11 +310,12 @@ namespace ReVibranceGUI
                 Logger.Info("Monitoring stopped.");
 
                 ToggleAutomationButton.Content = "START MONITORING";
-                ToggleAutomationButton.Background = StartButtonRed;
+                ToggleAutomationButton.Background = StartButtonBlue;
                 MonitoringDot.Fill = IdleGrey;
                 MonitoringText.Text = "Idle";
                 AddGameButton.IsEnabled = true;
-                ProcessListBox.IsEnabled = true;
+                ProcessListBox.IsHitTestVisible = true;
+                ProcessListBox.Opacity = 1.0;
             }
         }
 

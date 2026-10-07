@@ -49,8 +49,10 @@ namespace ReVibranceGUI.AMD
 
         public int GetCurrentVibranceLevel()
         {
-            // The upstream ADL wrapper does not expose a saturation getter; assume driver default.
-            return VibranceMath.UiMin;
+            // The upstream ADL wrapper does not expose a saturation getter.
+            // We MUST return the neutral default (50%), otherwise the UI slider initializes
+            // to 0% and instantly turns the user's screen black & white!
+            return 50;
         }
 
         public void SetVibranceLevel(int level, string targetDisplay = "All")

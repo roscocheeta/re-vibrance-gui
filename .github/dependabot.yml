@@ -1,0 +1,28 @@
+version: 2
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "dev"
+
+  # Maintain dependencies for .NET (NuGet)
+  - package-ecosystem: "nuget"
+    directory: "/ReVibranceGUI"
+    schedule:
+      interval: "weekly"
+    target-branch: "dev"
+
+  - package-ecosystem: "nuget"
+    directory: "/ReVibranceGUI.Tests"
+    schedule:
+      interval: "weekly"
+    target-branch: "dev"
+
+  # Maintain git submodules
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "dev"
