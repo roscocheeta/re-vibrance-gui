@@ -4,6 +4,9 @@ ReVibranceGUI is a lightweight, modern Windows desktop utility that automates NV
 
 This project is a complete C# WPF / .NET 8 architectural rewrite of the original [vibranceGUI](https://github.com/juvander/vibranceGUI) tool, replacing legacy Windows Forms components with modern APIs, robust background polling, and intelligent game-detection heuristics.
 
+> [!WARNING]
+> **Experimental Hardware Support:** While ReVibranceGUI natively supports NVIDIA, AMD, and Intel GPUs, it has currently only been actively tested on NVIDIA hardware. AMD and Intel integrations are experimental and may not work exactly as intended. Bug reports are welcome!
+
 ## ✨ Features
 
 - **Per-Process Customization:** Configure specific vibrance levels (50% - 100%) for individual games.
