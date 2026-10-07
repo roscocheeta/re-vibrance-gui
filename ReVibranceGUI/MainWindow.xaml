@@ -350,9 +350,9 @@
 
                                             <!-- Advanced Settings (Collapsible) -->
                                             <StackPanel Visibility="{Binding IsChecked, ElementName=AdvToggle, Converter={StaticResource BoolToVis}}" Margin="0,15,0,5">
-                                                <Grid Margin="0,0,0,8">
+                                                <Grid Margin="0,0,0,8" MinHeight="28">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="100"/>
+                                                        <ColumnDefinition Width="115"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Text="Target Display" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource SecondaryTextForeground}"/>
@@ -362,9 +362,9 @@
                                                     </ComboBox>
                                                 </Grid>
                                                 
-                                                <Grid>
+                                                <Grid MinHeight="28">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="110"/>
+                                                        <ColumnDefinition Width="115"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
