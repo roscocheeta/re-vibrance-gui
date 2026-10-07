@@ -283,6 +283,7 @@ namespace ReVibranceGUI
         {
             var settings = SettingsManager.Load();
             MinimizeToTrayCheckBox.IsChecked = settings.MinimizeToTray;
+            EnablePauseHotkeyCheckBox.IsChecked = settings.EnablePauseHotkey;
 
             foreach (var profile in settings.GameProfiles)
             {
@@ -311,6 +312,7 @@ namespace ReVibranceGUI
             {
                 MinimizeToTray = MinimizeToTrayCheckBox.IsChecked == true,
                 Theme = ThemeLightBtn.IsChecked == true ? "Light" : ThemeDarkBtn.IsChecked == true ? "Dark" : "Auto",
+                EnablePauseHotkey = EnablePauseHotkeyCheckBox.IsChecked == true,
                 PauseHotkey = PauseHotkeyTextBox.Text,
                 GameProfiles = TargetProcesses.ToList()
             });
@@ -490,6 +492,24 @@ namespace ReVibranceGUI
             var settings = SettingsManager.Load();
             settings.PauseHotkey = string.Empty;
             SettingsManager.Save(settings);
+        }
+
+        private void EnablePauseHotkeyCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+            
+            if (EnablePauseHotkeyCheckBox.IsChecked == true)
+            {
+                if (!string.IsNullOrEmpty(PauseHotkeyTextBox.Text) && PauseHotkeyTextBox.Text != "Failed to register")
+                {
+                    RegisterHotkeyFromString(PauseHotkeyTextBox.Text);
+                }
+            }
+            else
+            {
+                _pauseHotkey?.Unregister();
+            }
+            ScheduleSave();
         }
 
         // ─────────────────────────── Game list ───────────────────────────

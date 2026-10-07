@@ -8,6 +8,7 @@ namespace ReVibranceGUI.Services
     {
         public bool MinimizeToTray { get; set; } = false;
         public string Theme { get; set; } = "Auto";
+        public bool EnablePauseHotkey { get; set; } = false;
         public string PauseHotkey { get; set; } = string.Empty;
         public List<GameProfile> GameProfiles { get; set; } = new();
         // Note: the old global "IngameVibrance" field was removed (R5). System.Text.Json
