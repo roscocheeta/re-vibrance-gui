@@ -49,7 +49,13 @@ namespace ReVibranceGUI
 
             _nvidiaProxy = new ModernNvidiaVibranceProxy();
             _amdProxy = new ModernAmdVibranceProxy();
-            WindowsVibranceSlider.Value = InitializeHardwareFooter();
+            
+            int hwLevel = InitializeHardwareFooter();
+            WindowsVibranceSlider.Value = hwLevel;
+            if (WindowsVibranceValue != null)
+            {
+                WindowsVibranceValue.Text = $"{hwLevel}%";
+            }
 
             LoadSettings();
 
