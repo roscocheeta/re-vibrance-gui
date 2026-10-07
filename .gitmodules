@@ -1,0 +1,3 @@
+[submodule "IGCLWrapper"]
+	path = IGCLWrapper
+	url = https://github.com/terrymacdonald/IGCLWrapper.git
