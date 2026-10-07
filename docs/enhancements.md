@@ -23,3 +23,4 @@ This document tracks planned features, UI improvements, and technical enhancemen
   - **Stop / Start Monitoring:** A toggle to quickly pause or resume the background game-detection loop.
   - **Exit App:** A direct option to completely close ReVibranceGUI.
 - [x] **Global Hotkey for Pausing:** Implement a global keyboard hook to allow users to bind a custom keyboard shortcut to toggle the "Pause/Resume" state of the vibrance monitoring loop. (Modeled after similar capabilities in SteffenCarlsen's fork of the original VibranceGUI).
+- [ ] **Automatic Version Checker:** Query the GitHub API on application startup to check for new releases. Display a non-intrusive notification (e.g., a subtle "Update Available!" link in the footer) that takes the user to the GitHub Releases page.

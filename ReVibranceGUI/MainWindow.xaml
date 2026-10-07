@@ -423,7 +423,14 @@
                     </Grid.ColumnDefinitions>
                     
                     <Path x:Name="HardwareIcon" Data="M10,2H14V4H16V6H18V8H20V10H18V14H20V16H18V18H16V20H14V22H10V20H8V18H6V16H4V14H6V10H4V8H6V6H8V4H10V2M14,6H10V18H14V6Z" Fill="{DynamicResource SecondaryTextForeground}" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="HardwareText" Grid.Column="1" Text="Searching for GPU..." FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextForeground}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="HardwareText" Text="Searching for GPU..." FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextForeground}" Margin="0,0,15,0"/>
+                        <TextBlock x:Name="UpdateTextBlock" Visibility="Collapsed" FontSize="12">
+                            <Hyperlink NavigateUri="https://github.com/roscocheeta/re-vibrance-gui/releases/latest" RequestNavigate="Hyperlink_RequestNavigate" Foreground="#009688" TextDecorations="None" FontWeight="Bold">
+                                🎁 Update Available!
+                            </Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
                     
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse x:Name="MonitoringDot" Width="8" Height="8" Fill="#999999" Margin="0,0,6,0"/>

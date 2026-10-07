@@ -121,6 +121,52 @@ namespace ReVibranceGUI
                 PauseHotkeyTextBox.Text = settings.PauseHotkey;
                 RegisterHotkeyFromString(settings.PauseHotkey);
             }
+
+            CheckForUpdatesAsync();
+        }
+
+        private async void CheckForUpdatesAsync()
+        {
+            try
+            {
+                using var client = new System.Net.Http.HttpClient();
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("ReVibranceGUI-Updater/1.0");
+                client.Timeout = TimeSpan.FromSeconds(5);
+
+                var response = await client.GetStringAsync("https://api.github.com/repos/roscocheeta/re-vibrance-gui/releases/latest");
+                using var doc = System.Text.Json.JsonDocument.Parse(response);
+                if (doc.RootElement.TryGetProperty("tag_name", out var tagProp))
+                {
+                    string tagName = tagProp.GetString() ?? "";
+                    if (tagName.StartsWith("v")) tagName = tagName.Substring(1);
+
+                    if (Version.TryParse(tagName, out Version? latestVersion))
+                    {
+                        var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                        if (currentVersion != null && latestVersion > currentVersion)
+                        {
+                            Dispatcher.Invoke(() => UpdateTextBlock.Visibility = Visibility.Visible);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn("Failed to check for updates", ex);
+            }
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to open update link", ex);
+            }
+            e.Handled = true;
         }
 
         private void RegisterHotkeyFromString(string hotkeyStr)
