@@ -216,6 +216,8 @@ namespace ReVibranceGUI
             _automator?.Stop();
             _automator = null;
 
+            DisplayManager.RestoreAll();
+
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
             base.OnClosed(e);
@@ -223,7 +225,12 @@ namespace ReVibranceGUI
 
         // ──────────────────────────── Vibrance ───────────────────────────
 
-        private void ApplyProfile(GameProfile? profile)
+        private void ApplyProfile(GameProfile? profile) => ApplyProfile(profile, touchResolution: true);
+
+        /// <param name="touchResolution">
+        /// False for live desktop-slider previews, which must never change or restore the display mode.
+        /// </param>
+        private void ApplyProfile(GameProfile? profile, bool touchResolution)
         {
             Dispatcher.InvokeAsync(() =>
             {
@@ -234,6 +241,8 @@ namespace ReVibranceGUI
                 if (_amdProxy.IsInitialized) _amdProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
                 if (_intelProxy.IsInitialized) _intelProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
 
+                if (!touchResolution) return;
+
                 var res = profile != null && profile.ChangeResolution ? DisplayResolution.Parse(profile.TargetResolution) : null;
                 if (res != null)
                 {
@@ -242,8 +251,8 @@ namespace ReVibranceGUI
                 }
                 else
                 {
-                    string? devName = targetDisplay == "Primary" ? DisplayManager.GetDisplays().FirstOrDefault(d => d.IsPrimary)?.DeviceName : null;
-                    DisplayManager.RestoreResolution(devName);
+                    // No-op unless a previous profile changed the mode; then restores the user's configured mode.
+                    DisplayManager.RestoreAll();
                 }
             });
         }
@@ -255,15 +264,8 @@ namespace ReVibranceGUI
             int level = (int)WindowsVibranceSlider.Value;
             WindowsVibranceValue.Text = $"{level}%";
 
-            if (_automator != null)
-            {
-                // Live preview is now driven by tick or apply
-                ApplyProfile(null);
-            }
-            else
-            {
-                ApplyProfile(null); // Live desktop preview while not monitoring.
-            }
+            // Live desktop preview (whether or not monitoring is running); never alters the display mode.
+            ApplyProfile(null, touchResolution: false);
         }
 
         private void GameSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
