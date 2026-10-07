@@ -1,188 +1,230 @@
-using ReVibranceGUI.Models;
-using ReVibranceGUI.Services;
+using ReVibranceGUI.AMD;
 using ReVibranceGUI.Helpers;
-using System;
-using System.Linq;
+using ReVibranceGUI.Models;
+using ReVibranceGUI.Nvidia;
+using ReVibranceGUI.Services;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
-using ReVibranceGUI.Nvidia;
-using ReVibranceGUI.AMD;
+using System.Windows.Threading;
 
 namespace ReVibranceGUI
 {
     public partial class MainWindow : Window
     {
-        private ModernNvidiaVibranceProxy _nvidiaProxy;
-        private ModernAmdVibranceProxy _amdProxy;
-        private VibranceAutomator _automator;
-        private bool _isAutomatorRunning = false;
-        private System.Windows.Forms.NotifyIcon _notifyIcon;
+        private static readonly SolidColorBrush NvidiaGreen = Freeze(System.Windows.Media.Color.FromRgb(0x76, 0xB9, 0x00));
+        private static readonly SolidColorBrush AmdRed = Freeze(System.Windows.Media.Color.FromRgb(0xED, 0x1C, 0x24));
+        private static readonly SolidColorBrush MixedBlue = Freeze(System.Windows.Media.Color.FromRgb(0x00, 0x78, 0xD7));
+        private static readonly SolidColorBrush ActiveGreen = Freeze(System.Windows.Media.Color.FromRgb(0x4C, 0xAF, 0x50));
+        private static readonly SolidColorBrush IdleGrey = Freeze(System.Windows.Media.Color.FromRgb(0x99, 0x99, 0x99));
+        private static readonly SolidColorBrush StopButtonGrey = Freeze(System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x33));
+        private static readonly SolidColorBrush StartButtonRed = Freeze(System.Windows.Media.Color.FromRgb(0xFF, 0x4B, 0x4B));
+
+        private readonly ModernNvidiaVibranceProxy _nvidiaProxy;
+        private readonly ModernAmdVibranceProxy _amdProxy;
+        private readonly System.Windows.Forms.NotifyIcon _notifyIcon;
+        private readonly DispatcherTimer _saveDebounce;
+        private VibranceAutomator? _automator;
         private bool _isInitializing = true;
+
+        public ObservableCollection<GameProfile> TargetProcesses { get; } = new();
+
+        private bool IsAutomatorRunning => _automator != null;
 
         public MainWindow()
         {
             InitializeComponent();
             DataContext = this;
-            
-            // Setup System Tray Icon
-            _notifyIcon = new System.Windows.Forms.NotifyIcon();
-            _notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            _notifyIcon.Text = "ReVibranceGUI";
-            _notifyIcon.Visible = true;
-            _notifyIcon.DoubleClick += (s, args) =>
-            {
-                this.Show();
-                this.WindowState = WindowState.Normal;
-            };
 
-            // Check Startup Registry Key
-            var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
-            if (key?.GetValue("ReVibranceGUI") != null)
-            {
-                RunOnStartupCheckBox.IsChecked = true;
-            }
+            // R4: save shortly after any change instead of only on close.
+            _saveDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(750) };
+            _saveDebounce.Tick += (_, _) => { _saveDebounce.Stop(); SaveSettings(); };
+
+            _notifyIcon = CreateTrayIcon();
+
+            StartupManager.RepairIfStale();
+            RunOnStartupCheckBox.IsChecked = StartupManager.IsEnabled();
 
             _nvidiaProxy = new ModernNvidiaVibranceProxy();
             _amdProxy = new ModernAmdVibranceProxy();
+            WindowsVibranceSlider.Value = InitializeHardwareFooter();
 
-            int initialVibrance = 0;
-            var bc = new BrushConverter();
-            
-            if (_nvidiaProxy.IsInitialized && _amdProxy.IsInitialized)
-            {
-                HardwareText.Text = $"{_nvidiaProxy.GetGpuNames()} & {_amdProxy.GetGpuNames()}";
-                HardwareIcon.Fill = (System.Windows.Media.Brush)bc.ConvertFrom("#0078D7"); // Windows Blue for Mixed
-                initialVibrance = _nvidiaProxy.GetCurrentVibranceLevel(); // Default to Nvidia's level
-            }
-            else if (_nvidiaProxy.IsInitialized)
-            {
-                HardwareText.Text = _nvidiaProxy.GetGpuNames();
-                HardwareIcon.Fill = (System.Windows.Media.Brush)bc.ConvertFrom("#76B900");
-                initialVibrance = _nvidiaProxy.GetCurrentVibranceLevel();
-            }
-            else if (_amdProxy.IsInitialized)
-            {
-                HardwareText.Text = _amdProxy.GetGpuNames();
-                HardwareIcon.Fill = (System.Windows.Media.Brush)bc.ConvertFrom("#ED1C24");
-                initialVibrance = _amdProxy.GetCurrentVibranceLevel();
-            }
-            else
-            {
-                HardwareText.Text = "No Supported GPU Detected";
-                ToggleAutomationButton.IsEnabled = false;
-            }
+            LoadSettings();
 
-            WindowsVibranceSlider.Value = initialVibrance;
-            
-            // Load settings
-            var settings = SettingsManager.Load();
-            MinimizeToTrayCheckBox.IsChecked = settings.MinimizeToTray;
-            
-            foreach(var p in settings.GameProfiles)
-            {
-                if (!string.IsNullOrEmpty(p.ExePath))
-                {
-                    p.IconImage = IconHelper.GetIcon(p.ExePath);
-                }
-                TargetProcesses.Add(p);
-            }
-            
-            if (settings.Theme == "Light") ThemeLightBtn.IsChecked = true;
-            else if (settings.Theme == "Dark") ThemeDarkBtn.IsChecked = true;
-            else ThemeAutoBtn.IsChecked = true;
-            
+            TargetProcesses.CollectionChanged += (_, _) => ScheduleSave();
+            MinimizeToTrayCheckBox.Checked += (_, _) => ScheduleSave();
+            MinimizeToTrayCheckBox.Unchecked += (_, _) => ScheduleSave();
+
             _isInitializing = false;
         }
+
+        // ───────────────────────────── Setup ─────────────────────────────
+
+        private System.Windows.Forms.NotifyIcon CreateTrayIcon()
+        {
+            var icon = new System.Windows.Forms.NotifyIcon
+            {
+                Text = "ReVibranceGUI",
+                Visible = true
+            };
+
+            // C3: Assembly.Location is the .dll on .NET 8; use the real exe path.
+            string? exePath = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(exePath))
+            {
+                icon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath);
+            }
+
+            icon.DoubleClick += (_, _) =>
+            {
+                Show();
+                WindowState = WindowState.Normal;
+                Activate();
+            };
+            return icon;
+        }
+
+        /// <summary>Populates the footer and returns the current desktop vibrance level.</summary>
+        private int InitializeHardwareFooter()
+        {
+            bool nv = _nvidiaProxy.IsInitialized;
+            bool amd = _amdProxy.IsInitialized;
+
+            if (nv && amd)
+            {
+                HardwareText.Text = $"{_nvidiaProxy.GetGpuNames()} & {_amdProxy.GetGpuNames()}";
+                HardwareIcon.Fill = MixedBlue;
+                return _nvidiaProxy.GetCurrentVibranceLevel();
+            }
+            if (nv)
+            {
+                HardwareText.Text = _nvidiaProxy.GetGpuNames();
+                HardwareIcon.Fill = NvidiaGreen;
+                return _nvidiaProxy.GetCurrentVibranceLevel();
+            }
+            if (amd)
+            {
+                HardwareText.Text = _amdProxy.GetGpuNames();
+                HardwareIcon.Fill = AmdRed;
+                return _amdProxy.GetCurrentVibranceLevel();
+            }
+
+            HardwareText.Text = "No Supported GPU Detected";
+            ToggleAutomationButton.IsEnabled = false;
+            Logger.Warn("No supported GPU detected.");
+            return VibranceMath.UiMin;
+        }
+
+        // ──────────────────────────── Settings ───────────────────────────
+
+        private void LoadSettings()
+        {
+            var settings = SettingsManager.Load();
+            MinimizeToTrayCheckBox.IsChecked = settings.MinimizeToTray;
+
+            foreach (var profile in settings.GameProfiles)
+            {
+                profile.IconImage = IconHelper.GetIcon(profile.ExePath);
+                TargetProcesses.Add(profile);
+            }
+
+            switch (settings.Theme)
+            {
+                case "Light": ThemeLightBtn.IsChecked = true; break;
+                case "Dark": ThemeDarkBtn.IsChecked = true; break;
+                default: ThemeAutoBtn.IsChecked = true; break;
+            }
+        }
+
+        private void ScheduleSave()
+        {
+            if (_isInitializing) return;
+            _saveDebounce.Stop();
+            _saveDebounce.Start();
+        }
+
+        private void SaveSettings()
+        {
+            SettingsManager.Save(new AppSettings
+            {
+                MinimizeToTray = MinimizeToTrayCheckBox.IsChecked == true,
+                Theme = ThemeLightBtn.IsChecked == true ? "Light" : ThemeDarkBtn.IsChecked == true ? "Dark" : "Auto",
+                GameProfiles = TargetProcesses.ToList()
+            });
+        }
+
+        // ─────────────────────────── Lifecycle ───────────────────────────
 
         protected override void OnStateChanged(EventArgs e)
         {
             base.OnStateChanged(e);
-            
-            if (this.WindowState == WindowState.Minimized && MinimizeToTrayCheckBox.IsChecked == true)
+            if (WindowState == WindowState.Minimized && MinimizeToTrayCheckBox.IsChecked == true)
             {
-                this.Hide();
+                Hide();
             }
         }
 
         protected override void OnClosed(EventArgs e)
         {
-            var settings = new AppSettings();
-            settings.MinimizeToTray = MinimizeToTrayCheckBox.IsChecked == true;
-            settings.Theme = ThemeLightBtn.IsChecked == true ? "Light" : (ThemeDarkBtn.IsChecked == true ? "Dark" : "Auto");
-            foreach(var p in TargetProcesses)
-            {
-                settings.GameProfiles.Add(p);
-            }
-            SettingsManager.Save(settings);
+            _saveDebounce.Stop();
+            SaveSettings();
 
-            _notifyIcon?.Dispose();
             _automator?.Stop();
+            _automator = null;
+
+            _notifyIcon.Visible = false;
+            _notifyIcon.Dispose();
             base.OnClosed(e);
         }
 
+        // ──────────────────────────── Vibrance ───────────────────────────
+
         private void SetVibranceLevel(int level)
         {
+            // Intentionally not else-if: mixed NVIDIA + AMD systems get both.
             if (_nvidiaProxy.IsInitialized) _nvidiaProxy.SetVibranceLevel(level);
             if (_amdProxy.IsInitialized) _amdProxy.SetVibranceLevel(level);
         }
 
         private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (_isInitializing) return;
+            if (_isInitializing || WindowsVibranceValue == null) return;
 
-            if (WindowsVibranceValue != null && WindowsVibranceSlider != null)
+            int level = (int)WindowsVibranceSlider.Value;
+            WindowsVibranceValue.Text = $"{level}%";
+
+            if (_automator != null)
             {
-                WindowsVibranceValue.Text = WindowsVibranceSlider.Value.ToString("0") + "%";
-
-                if (_isAutomatorRunning && _automator != null)
-                {
-                    _automator.UpdateLevels((int)WindowsVibranceSlider.Value);
-                }
-                else
-                {
-                    if (sender == WindowsVibranceSlider)
-                    {
-                        SetVibranceLevel((int)WindowsVibranceSlider.Value);
-                    }
-                }
+                _automator.UpdateLevels(level);
+            }
+            else
+            {
+                SetVibranceLevel(level); // Live desktop preview while not monitoring.
             }
         }
-        
+
         private void GameSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (_isInitializing) return;
-            if (_isAutomatorRunning && _automator != null)
-            {
-                _automator.UpdateProfiles(TargetProcesses.ToList());
-            }
+            _automator?.UpdateProfiles(TargetProcesses.ToList());
+            ScheduleSave();
         }
-
-        public System.Collections.ObjectModel.ObservableCollection<GameProfile> TargetProcesses { get; set; } = new System.Collections.ObjectModel.ObservableCollection<GameProfile>();
 
         private void ToggleAutomationButton_Click(object sender, RoutedEventArgs e)
         {
-            var bc = new BrushConverter();
-            if (!_isAutomatorRunning)
+            if (!IsAutomatorRunning)
             {
                 if (TargetProcesses.Count == 0) return;
 
-                var processes = new System.Collections.Generic.List<GameProfile>(TargetProcesses);
-
-                _automator = new VibranceAutomator(
-                    processes, 
-                    (int)WindowsVibranceSlider.Value, 
-                    SetVibranceLevel);
-                
+                _automator = new VibranceAutomator(TargetProcesses.ToList(), (int)WindowsVibranceSlider.Value, SetVibranceLevel);
                 _automator.Start();
-                _isAutomatorRunning = true;
-                
+                Logger.Info($"Monitoring started for {TargetProcesses.Count} game(s).");
+
                 ToggleAutomationButton.Content = "STOP MONITORING";
-                ToggleAutomationButton.Background = (System.Windows.Media.Brush)bc.ConvertFrom("#333333");
-                
-                MonitoringDot.Fill = (System.Windows.Media.Brush)bc.ConvertFrom("#4CAF50");
+                ToggleAutomationButton.Background = StopButtonGrey;
+                MonitoringDot.Fill = ActiveGreen;
                 MonitoringText.Text = "Active";
-                
-                // Disable UI elements
                 AddGameButton.IsEnabled = false;
                 ProcessListBox.IsEnabled = false;
             }
@@ -190,35 +232,38 @@ namespace ReVibranceGUI
             {
                 _automator?.Stop();
                 _automator = null;
-                _isAutomatorRunning = false;
-                
+                Logger.Info("Monitoring stopped.");
+
                 ToggleAutomationButton.Content = "START MONITORING";
-                ToggleAutomationButton.Background = (System.Windows.Media.Brush)bc.ConvertFrom("#FF4B4B");
-                
-                MonitoringDot.Fill = (System.Windows.Media.Brush)bc.ConvertFrom("#999999");
+                ToggleAutomationButton.Background = StartButtonRed;
+                MonitoringDot.Fill = IdleGrey;
                 MonitoringText.Text = "Idle";
-                
-                // Enable UI elements
                 AddGameButton.IsEnabled = true;
                 ProcessListBox.IsEnabled = true;
             }
         }
 
+        // ─────────────────────────── Game list ───────────────────────────
+
+        private void AddProfile(GameProfile profile)
+        {
+            if (GameProfileFactory.ContainsExe(TargetProcesses, profile.ExeName)) return;
+            TargetProcesses.Add(profile);
+            _automator?.UpdateProfiles(TargetProcesses.ToList());
+        }
+
         private void RemoveProcess_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is System.Windows.Controls.Button btn && btn.DataContext is GameProfile profile)
+            if (sender is System.Windows.Controls.Button { DataContext: GameProfile profile })
             {
                 TargetProcesses.Remove(profile);
-                if (_isAutomatorRunning && _automator != null)
-                {
-                    _automator.UpdateProfiles(TargetProcesses.ToList());
-                }
+                _automator?.UpdateProfiles(TargetProcesses.ToList());
             }
         }
 
         private void AddGameButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is System.Windows.Controls.Button btn && btn.ContextMenu != null)
+            if (sender is System.Windows.Controls.Button { ContextMenu: not null } btn)
             {
                 btn.ContextMenu.PlacementTarget = btn;
                 btn.ContextMenu.IsOpen = true;
@@ -227,224 +272,176 @@ namespace ReVibranceGUI
 
         private async void ScanGamesMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            var games = new System.Collections.Generic.List<Scanners.GameInstall>();
-            await System.Threading.Tasks.Task.Run(() => 
+            List<Scanners.GameInstall> games;
+            try
             {
-                var steam = new Scanners.SteamScanner();
-                var epic = new Scanners.EpicScanner();
-                var gog = new Scanners.GOGScanner();
-                var blizzard = new Scanners.BlizzardScanner();
-                
-                games.AddRange(steam.Scan());
-                games.AddRange(epic.Scan());
-                games.AddRange(gog.Scan());
-                games.AddRange(blizzard.Scan());
-            });
-            
-            var gameNames = new System.Collections.Generic.List<string>();
-            foreach (var g in games)
-            {
-                if (g.ExeName != "unknown.exe")
+                games = await Task.Run(() =>
                 {
-                    string plat = string.IsNullOrEmpty(g.Platform) ? "PC" : g.Platform;
-                    gameNames.Add($"[{plat}] {g.Name} ({g.ExeName})");
-                }
+                    var results = new List<Scanners.GameInstall>();
+                    Scanners.IGameScanner[] scanners =
+                    {
+                        new Scanners.SteamScanner(),
+                        new Scanners.EpicScanner(),
+                        new Scanners.GOGScanner(),
+                        new Scanners.BlizzardScanner()
+                    };
+                    foreach (var scanner in scanners)
+                    {
+                        try { results.AddRange(scanner.Scan()); }
+                        catch (Exception ex) { Logger.Warn($"{scanner.GetType().Name} failed", ex); }
+                    }
+                    return results;
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Game scan failed", ex);
+                return;
             }
 
-            var window = new SelectionWindow("Scan Results", "Select a game to monitor:", gameNames);
-            window.Owner = this;
-            if (window.ShowDialog() == true)
+            var labelled = games
+                .Where(g => g.ExeName != "unknown.exe")
+                .Select(g => (Label: GameProfileFactory.FormatScanLabel(g.Platform, g.Name, g.ExeName), Game: g))
+                .ToList();
+
+            var window = new SelectionWindow("Scan Results", "Select a game to monitor:", labelled.Select(x => x.Label).ToList())
             {
-                string selectedItem = window.SelectedItem;
-                if (!TargetProcesses.Any(p => p.DisplayName == selectedItem))
-                {
-                    string exe = selectedItem;
-                    int start = selectedItem.LastIndexOf('(');
-                    int end = selectedItem.LastIndexOf(')');
-                    if (start != -1 && end != -1 && end > start)
-                    {
-                        exe = selectedItem.Substring(start + 1, end - start - 1);
-                    }
-                    
-                    var gameMatch = games.FirstOrDefault(g => $"[{g.Platform}] {g.Name} ({g.ExeName})" == selectedItem || $"[PC] {g.Name} ({g.ExeName})" == selectedItem);
-                    string exePath = "";
-                    if (gameMatch != null)
-                    {
-                        if (!string.IsNullOrEmpty(gameMatch.ExePath))
-                        {
-                            exePath = gameMatch.ExePath;
-                        }
-                        else if (!string.IsNullOrEmpty(gameMatch.InstallPath))
-                        {
-                            exePath = System.IO.Path.Combine(gameMatch.InstallPath, gameMatch.ExeName);
-                        }
-                    }
-                    
-                    var profile = new GameProfile
-                    {
-                        DisplayName = selectedItem,
-                        ExeName = exe,
-                        ExePath = exePath,
-                        VibranceLevel = 100,
-                        IconImage = IconHelper.GetIcon(exePath)
-                    };
-                    TargetProcesses.Add(profile);
-                    
-                    if (_isAutomatorRunning && _automator != null)
-                        _automator.UpdateProfiles(TargetProcesses.ToList());
-                }
+                Owner = this
+            };
+            if (window.ShowDialog() != true || window.SelectedItem is not string selected) return;
+
+            var match = labelled.FirstOrDefault(x => x.Label == selected).Game;
+            string? exePath = null;
+            if (match != null)
+            {
+                exePath = !string.IsNullOrEmpty(match.ExePath)
+                    ? match.ExePath
+                    : !string.IsNullOrEmpty(match.InstallPath) ? System.IO.Path.Combine(match.InstallPath, match.ExeName) : null;
             }
+
+            AddProfile(GameProfileFactory.Create(selected, GameProfileFactory.ExtractExeName(selected), exePath));
         }
 
         private void RunningProcessesMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            var processNames = new System.Collections.Generic.HashSet<string>();
-            var procMap = new System.Collections.Generic.Dictionary<string, string>();
-            
-            foreach (var p in System.Diagnostics.Process.GetProcesses())
+            var procMap = new Dictionary<string, string?>();
+
+            foreach (var p in Process.GetProcesses())
             {
-                try
+                using (p) // R1: dispose every Process handle.
                 {
-                    if (!string.IsNullOrEmpty(p.MainWindowTitle))
+                    try
                     {
-                        string display = $"{p.MainWindowTitle} ({p.ProcessName}.exe)";
-                        processNames.Add(display);
-                        try { procMap[display] = p.MainModule.FileName; } catch { }
+                        if (string.IsNullOrEmpty(p.MainWindowTitle)) continue;
+
+                        string label = $"{p.MainWindowTitle} ({p.ProcessName}.exe)";
+                        string? path = null;
+                        try { path = p.MainModule?.FileName; } catch { /* Access denied for elevated/protected processes. */ }
+                        procMap.TryAdd(label, path);
+                    }
+                    catch
+                    {
+                        // Process exited while enumerating.
                     }
                 }
-                catch { }
             }
 
-            var sortedList = new System.Collections.Generic.List<string>(processNames);
-            sortedList.Sort();
+            var sorted = procMap.Keys.OrderBy(k => k, StringComparer.CurrentCultureIgnoreCase).ToList();
+            var window = new SelectionWindow("Running Processes", "Select a running process:", sorted) { Owner = this };
+            if (window.ShowDialog() != true || window.SelectedItem is not string selected) return;
 
-            var window = new SelectionWindow("Running Processes", "Select a running process:", sortedList);
-            window.Owner = this;
-            if (window.ShowDialog() == true)
-            {
-                string selectedItem = window.SelectedItem;
-                if (!TargetProcesses.Any(p => p.DisplayName == selectedItem))
-                {
-                    string exe = selectedItem;
-                    int start = selectedItem.LastIndexOf('(');
-                    int end = selectedItem.LastIndexOf(')');
-                    if (start != -1 && end != -1 && end > start)
-                    {
-                        exe = selectedItem.Substring(start + 1, end - start - 1);
-                    }
-                    
-                    procMap.TryGetValue(selectedItem, out string exePath);
-                    
-                    var profile = new GameProfile
-                    {
-                        DisplayName = selectedItem,
-                        ExeName = exe,
-                        ExePath = exePath,
-                        VibranceLevel = 100,
-                        IconImage = IconHelper.GetIcon(exePath)
-                    };
-                    TargetProcesses.Add(profile);
-                    
-                    if (_isAutomatorRunning && _automator != null)
-                        _automator.UpdateProfiles(TargetProcesses.ToList());
-                }
-            }
+            procMap.TryGetValue(selected, out string? exePath);
+            AddProfile(GameProfileFactory.Create(selected, GameProfileFactory.ExtractExeName(selected), exePath));
         }
 
         private void BrowseMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog();
-            dialog.DefaultExt = ".exe";
-            dialog.Filter = "Executables (.exe)|*.exe";
-
-            if (dialog.ShowDialog() == true)
+            var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                string exeName = System.IO.Path.GetFileName(dialog.FileName);
-                string exePath = dialog.FileName;
-                string displayName = $"[Manual] {exeName}";
-                
-                if (!TargetProcesses.Any(p => p.ExeName == exeName))
-                {
-                    var profile = new GameProfile
-                    {
-                        DisplayName = displayName,
-                        ExeName = exeName,
-                        ExePath = exePath,
-                        VibranceLevel = 100,
-                        IconImage = IconHelper.GetIcon(exePath)
-                    };
-                    TargetProcesses.Add(profile);
-                    
-                    if (_isAutomatorRunning && _automator != null)
-                        _automator.UpdateProfiles(TargetProcesses.ToList());
-                }
-            }
+                DefaultExt = ".exe",
+                Filter = "Executables (.exe)|*.exe"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            string exeName = System.IO.Path.GetFileName(dialog.FileName);
+            AddProfile(GameProfileFactory.Create($"[Manual] {exeName}", exeName, dialog.FileName));
         }
+
+        // ──────────────────────────── Options ────────────────────────────
 
         private void RunOnStartupCheckBox_Checked(object sender, RoutedEventArgs e)
         {
+            if (_isInitializing) return;
             try
             {
-                var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
-                key?.SetValue("ReVibranceGUI", System.Reflection.Assembly.GetExecutingAssembly().Location);
+                StartupManager.Enable();
             }
             catch (Exception ex)
             {
+                Logger.Error("Failed to enable run on startup", ex);
                 System.Windows.MessageBox.Show($"Failed to set startup registry key: {ex.Message}");
             }
         }
 
         private void RunOnStartupCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
+            if (_isInitializing) return;
             try
             {
-                var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
-                key?.DeleteValue("ReVibranceGUI", false);
+                StartupManager.Disable();
             }
             catch (Exception ex)
             {
+                Logger.Error("Failed to disable run on startup", ex);
                 System.Windows.MessageBox.Show($"Failed to remove startup registry key: {ex.Message}");
             }
         }
 
         private void ThemeRadioButton_Checked(object sender, RoutedEventArgs e)
         {
-            if (sender is System.Windows.Controls.RadioButton rb && rb.IsChecked == true)
+            if (sender is System.Windows.Controls.RadioButton { IsChecked: true, Content: string theme })
             {
-                string theme = rb.Content.ToString();
                 ApplyTheme(theme);
+                ScheduleSave();
             }
         }
 
-        private void ApplyTheme(string theme)
+        private static void ApplyTheme(string theme)
         {
             bool isDark = true;
             if (theme == "Auto")
             {
                 try
                 {
-                    using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
+                    using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+                    if (key?.GetValue("AppsUseLightTheme") is int useLight)
                     {
-                        if (key != null && key.GetValue("AppsUseLightTheme") is int useLight)
-                        {
-                            isDark = useLight == 0;
-                        }
+                        isDark = useLight == 0;
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Logger.Warn("Could not read Windows theme preference", ex);
+                }
             }
             else
             {
                 isDark = theme == "Dark";
             }
 
-            var app = (App)System.Windows.Application.Current;
-            if (app != null)
+            if (System.Windows.Application.Current is App app)
             {
                 app.Resources.MergedDictionaries.Clear();
                 string themeUri = isDark ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml";
                 app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri(themeUri, UriKind.Relative) });
             }
+        }
+
+        private static SolidColorBrush Freeze(System.Windows.Media.Color color)
+        {
+            var brush = new SolidColorBrush(color);
+            brush.Freeze();
+            return brush;
         }
     }
 }

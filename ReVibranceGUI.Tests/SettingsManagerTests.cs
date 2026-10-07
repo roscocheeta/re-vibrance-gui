@@ -17,7 +17,7 @@ namespace ReVibranceGUI.Tests
             
             Assert.False(settings.MinimizeToTray);
             Assert.Equal("Auto", settings.Theme);
-            Assert.Equal(100, settings.IngameVibrance);
+            
             Assert.Empty(settings.GameProfiles);
         }
 
@@ -28,7 +28,7 @@ namespace ReVibranceGUI.Tests
             {
                 MinimizeToTray = true,
                 Theme = "Dark",
-                IngameVibrance = 85
+                
             };
             
             settings.GameProfiles.Add(new GameProfile 

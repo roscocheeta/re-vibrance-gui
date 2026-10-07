@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.IO;
-using System.Reflection;
 
 namespace vibrance.GUI.AMD.vendor.utils
 {
@@ -17,22 +16,8 @@ namespace vibrance.GUI.AMD.vendor.utils
             return path;
         }
 
-        public static string LoadUnmanagedLibraryFromResource(Assembly assembly,
-            string libraryResourceName,
-            string libraryName)
-        {
-            string tempDllPath;
-            using (Stream s = assembly.GetManifestResourceStream(libraryResourceName))
-            {
-                byte[] data = new BinaryReader(s).ReadBytes((int)s.Length);
-
-                tempDllPath = Path.Combine(GetVibrance_GUI_AppDataPath(), libraryName);
-                File.WriteAllBytes(tempDllPath, data);
-
-            }
-
-            NativeMethods.LoadLibrary(libraryName);
-            return tempDllPath;
-        }
+        // Removed LoadUnmanagedLibraryFromResource (S4): it was unused, wrote a DLL into
+        // user-writable %AppData% and then loaded it by bare name via LoadLibrary, which is
+        // a DLL-planting / search-order-hijacking pattern.
     }
 }

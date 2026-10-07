@@ -3,15 +3,11 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
-
-  <ItemGroup>
-  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\app_icon.ico">
@@ -21,6 +17,10 @@
 
   <ItemGroup>
     <PackageReference Include="NvAPIWrapper.Net" Version="0.8.1.101" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ReVibranceGUI.Tests" />
   </ItemGroup>
 
 </Project>

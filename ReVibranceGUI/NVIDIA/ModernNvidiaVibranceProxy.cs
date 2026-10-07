@@ -1,7 +1,5 @@
-using System;
-using System.Linq;
-using NvAPIWrapper;
 using NvAPIWrapper.Display;
+using ReVibranceGUI.Services;
 
 namespace ReVibranceGUI.Nvidia
 {
@@ -13,14 +11,14 @@ namespace ReVibranceGUI.Nvidia
         {
             try
             {
-                // Initialize the NVIDIA API
                 NvAPIWrapper.NVIDIA.Initialize();
                 IsInitialized = true;
+                Logger.Info("NVAPI initialized.");
             }
             catch (Exception ex)
             {
                 IsInitialized = false;
-                Console.WriteLine($"Failed to initialize NvAPIWrapper: {ex.Message}");
+                Logger.Info($"NVAPI not available ({ex.GetType().Name}); NVIDIA support disabled.");
             }
         }
 
@@ -30,41 +28,35 @@ namespace ReVibranceGUI.Nvidia
             try
             {
                 var gpus = NvAPIWrapper.GPU.PhysicalGPU.GetPhysicalGPUs();
-                if (gpus != null && gpus.Length > 0)
+                if (gpus is { Length: > 0 })
                 {
-                    var names = gpus.Select(g => g.FullName).Distinct().ToList();
-                    return string.Join(" / ", names);
+                    return string.Join(" / ", gpus.Select(g => g.FullName).Distinct());
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error getting NVIDIA GPU names: {ex.Message}");
+                Logger.Warn("Error getting NVIDIA GPU names", ex);
             }
             return "NVIDIA GPU";
         }
 
         public int GetCurrentVibranceLevel()
         {
-            if (!IsInitialized) return 50;
+            if (!IsInitialized) return VibranceMath.UiMin;
 
             try
             {
-                var displays = Display.GetDisplays();
-                var primary = displays.FirstOrDefault();
+                var primary = Display.GetDisplays().FirstOrDefault();
                 if (primary != null)
                 {
-                    var dvcInfo = primary.DigitalVibranceControl;
-                    int nativeLevel = dvcInfo.CurrentLevel;
-                    
-                    // Map Native (0-63) back to UI (50-100)
-                    return 50 + (int)Math.Round((nativeLevel / 63.0) * 50.0);
+                    return VibranceMath.NvidiaToUi(primary.DigitalVibranceControl.CurrentLevel);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error getting vibrance level: {ex.Message}");
+                Logger.Warn("Error reading NVIDIA vibrance level", ex);
             }
-            return 50;
+            return VibranceMath.UiMin;
         }
 
         public void SetVibranceLevel(int level)
@@ -73,24 +65,15 @@ namespace ReVibranceGUI.Nvidia
 
             try
             {
-                // UI gives us 50-100. Map to Native 0-63.
-                // 50 -> 0, 100 -> 63
-                int nativeLevel = (int)Math.Round(((level - 50) / 50.0) * 63.0);
-                
-                // Clamp
-                if (nativeLevel < 0) nativeLevel = 0;
-                if (nativeLevel > 63) nativeLevel = 63;
-
-                var displays = Display.GetDisplays();
-                foreach (var display in displays)
+                int nativeLevel = VibranceMath.UiToNvidia(level);
+                foreach (var display in Display.GetDisplays())
                 {
-                    var dvcInfo = display.DigitalVibranceControl;
-                    dvcInfo.CurrentLevel = nativeLevel;
+                    display.DigitalVibranceControl.CurrentLevel = nativeLevel;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error setting vibrance level: {ex.Message}");
+                Logger.Error($"Error setting NVIDIA vibrance to {level}", ex);
             }
         }
     }

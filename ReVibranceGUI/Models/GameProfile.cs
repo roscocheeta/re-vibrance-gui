@@ -11,6 +11,6 @@ namespace ReVibranceGUI.Models
         public int VibranceLevel { get; set; } = 100;
 
         [JsonIgnore]
-        public ImageSource IconImage { get; set; }
+        public ImageSource? IconImage { get; set; }
     }
 }

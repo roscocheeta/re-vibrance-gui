@@ -1,13 +1,15 @@
+name: CI
+
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "master", "dev" ]
     tags: [ "v*.*.*" ]
     paths-ignore:
       - '**.md'
       - 'docs/**'
       - '.gitignore'
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "master", "dev" ]
     paths-ignore:
       - '**.md'
       - 'docs/**'

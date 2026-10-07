@@ -486,7 +486,9 @@ $RECYCLE.BIN/
 
 # Internal Documentation & Notes
 docs/
+dpcs/*
 ReVibranceGUI/docs/
+ReVibranceGUI/docs/*
 
 
 # Temporary/Reference Projects

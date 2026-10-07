@@ -14,7 +14,7 @@ This project is a complete C# WPF / .NET 8 architectural rewrite of the original
 - **Non-Intrusive:** Minimizes silently to the Windows System Tray and runs securely on Windows Startup without UAC prompts.
 
 ## 🚀 Architecture Improvements (vs Original)
-1. **Removed `SetWinEventHook`:** Replaced the legacy, aggressive global Windows hook with a localized 500ms `Task.Delay` background poller to ensure perfect stability without triggering anti-cheat mechanisms.
+1. **Removed `SetWinEventHook`:** Replaced the legacy global Windows hook with a lightweight 500ms `Task.Delay` background poller using `GetForegroundWindow`. This improves stability and reduces the risk of being flagged by aggressive kernel-level anti-cheat mechanisms that monitor global hooks.
 2. **Modern State Persistence:** Decoupled the old configuration files into a clean `%AppData%\ReVibranceGUI\settings.json` serialized state model.
 3. **Upgraded UI/UX:** Migrated from `WinForms` to a fully responsive, dark-mode-ready WPF layout.
 
@@ -38,5 +38,4 @@ dotnet test ReVibranceGUI.sln
 ```
 
 ## 📜 License
-This software is built upon the foundational logic established by juvander and SteffenCarlsen.
-Licensed under GPLv3.
+This project is a complete rewrite of the original `vibranceGUI` by juvander and SteffenCarlsen. Please note that the original upstream repositories do not contain an explicit open-source license. This rewrite is provided for educational and personal use.

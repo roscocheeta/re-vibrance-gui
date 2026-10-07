@@ -6,7 +6,7 @@ namespace ReVibranceGUI
 {
     public partial class SelectionWindow : Window
     {
-        public string SelectedItem { get; private set; }
+        public string? SelectedItem { get; private set; }
 
         public SelectionWindow(string title, string header, IEnumerable<string> items)
         {

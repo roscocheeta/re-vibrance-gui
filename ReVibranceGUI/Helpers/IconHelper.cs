@@ -1,5 +1,4 @@
-using System;
-using System.Drawing;
+using System.IO;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -9,29 +8,28 @@ namespace ReVibranceGUI.Helpers
 {
     public static class IconHelper
     {
-        public static ImageSource GetIcon(string filePath)
+        public static ImageSource? GetIcon(string? filePath)
         {
-            if (string.IsNullOrEmpty(filePath) || !System.IO.File.Exists(filePath))
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
                 return null;
 
             try
             {
-                using (Icon sysicon = Icon.ExtractAssociatedIcon(filePath))
-                {
-                    if (sysicon != null)
-                    {
-                        return Imaging.CreateBitmapSourceFromHIcon(
-                            sysicon.Handle,
-                            Int32Rect.Empty,
-                            BitmapSizeOptions.FromEmptyOptions());
-                    }
-                }
+                using var sysicon = System.Drawing.Icon.ExtractAssociatedIcon(filePath);
+                if (sysicon == null) return null;
+
+                var source = Imaging.CreateBitmapSourceFromHIcon(
+                    sysicon.Handle,
+                    Int32Rect.Empty,
+                    BitmapSizeOptions.FromEmptyOptions());
+                source.Freeze(); // Allows safe use across threads and lets WPF release the HICON copy.
+                return source;
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore extraction errors
+                Services.Logger.Warn($"Icon extraction failed for {filePath}", ex);
+                return null;
             }
-            return null;
         }
     }
 }
