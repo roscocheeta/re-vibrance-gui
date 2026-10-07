@@ -271,6 +271,11 @@
           "System.Threading": "4.3.0"
         }
       },
+      "System.CodeDom": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "QWERdKi/tQAx+MbrPxTGcpchqMANnVXNiv2r2tILBBB38E74buD+fABSUhozZ1G9kjbadFB0m+HPFMkhJPeFvA=="
+      },
       "System.Collections": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -493,6 +498,14 @@
           "System.Runtime": "4.3.0",
           "System.Runtime.Extensions": "4.3.0",
           "System.Threading": "4.3.0"
+        }
+      },
+      "System.Management": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "LE3rDZoPzulou78Tsq+3ALhUs4vatQ03v2QWbYVIenVPneUH/+LTUmHyyl098OxIFLQI6sNkZs8YHbUnT/sm3A==",
+        "dependencies": {
+          "System.CodeDom": "10.0.0"
         }
       },
       "System.Net.Http": {
@@ -1021,9 +1034,16 @@
           "xunit.extensibility.core": "[2.5.3]"
         }
       },
+      "igclwrapper": {
+        "type": "Project",
+        "dependencies": {
+          "System.Management": "[10.0.0, )"
+        }
+      },
       "revibrancegui": {
         "type": "Project",
         "dependencies": {
+          "IGCLWrapper": "[0.1.0, )",
           "NvAPIWrapper.Net": "[0.8.1.101, )"
         }
       }

@@ -1,22 +1,27 @@
 # ReVibranceGUI
 
-ReVibranceGUI is a lightweight, modern Windows desktop utility that automates NVIDIA and AMD GPU vibrance (digital saturation) settings based on the currently active application.
+ReVibranceGUI is a lightweight, modern Windows desktop utility that automates NVIDIA, AMD, and Intel GPU vibrance (digital saturation) settings based on the currently active application.
 
 This project is a complete C# WPF / .NET 8 architectural rewrite of the original [vibranceGUI](https://github.com/juvander/vibranceGUI) tool, replacing legacy Windows Forms components with modern APIs, robust background polling, and intelligent game-detection heuristics.
+
+> [!WARNING]
+> **Experimental Hardware Support:** While ReVibranceGUI natively supports NVIDIA, AMD, and Intel GPUs, it has currently only been actively tested on NVIDIA hardware. AMD and Intel integrations are experimental and may not work exactly as intended. Bug reports are welcome!
 
 ## ✨ Features
 
 - **Per-Process Customization:** Configure specific vibrance levels (50% - 100%) for individual games.
 - **Smart Game Detection:** Automatically scans Steam, Epic Games, GOG, and Blizzard Battle.net manifests to locate your game executables effortlessly.
 - **Dynamic Icons:** Extracts and mounts native `.exe` icons into your UI's Game Cards for a rich visual experience.
-- **Multi-GPU Support:** Supports both NVIDIA (via NVAPI) and AMD (via ADL) graphics cards natively.
+- **Multi-GPU Support:** Supports NVIDIA (via NVAPI), AMD (via ADL), and Intel (via IGCL) graphics cards natively.
 - **Hardware Integration:** The UI directly queries and visualizes your detected graphics adapter state.
 - **Non-Intrusive:** Minimizes silently to the Windows System Tray and runs securely on Windows Startup without UAC prompts.
 
 ## 🚀 Architecture Improvements (vs Original)
 1. **Removed `SetWinEventHook`:** Replaced the legacy global Windows hook with a lightweight 500ms `Task.Delay` background poller using `GetForegroundWindow`. This improves stability and reduces the risk of being flagged by aggressive kernel-level anti-cheat mechanisms that monitor global hooks.
 2. **Modern State Persistence:** Decoupled the old configuration files into a clean `%AppData%\ReVibranceGUI\settings.json` serialized state model.
-3. **Upgraded UI/UX:** Migrated from `WinForms` to a fully responsive, dark-mode-ready WPF layout.
+3. **Upgraded UI/UX:** Migrated from `WinForms` to a fully responsive WPF layout featuring Auto, Light, and Dark themes.
+4. **Unified Math Engine:** NVIDIA, AMD, and Intel APIs scale vibrance differently. The core `VibranceMath` engine normalizes them all into a unified, predictable `0%` to `100%` scale for the UI.
+5. **Multi-Monitor Awareness:** Allows you to target vibrance changes strictly to your *Primary* monitor, or broadcast them across *All* connected monitors.
 
 ## 🛠️ Development & Building
 

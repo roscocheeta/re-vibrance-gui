@@ -58,7 +58,7 @@ namespace ReVibranceGUI.Scanners
                                             continue;
 
                                         string exeName = "unknown.exe";
-                                        
+
                                         // Use lookup table
                                         if (_knownExecutables.TryGetValue(displayName, out string knownExe))
                                         {
@@ -98,11 +98,11 @@ namespace ReVibranceGUI.Scanners
                     var files = Directory.GetFiles(path, "*.exe");
                     long largest = 0;
                     string best = null;
-                    foreach(var f in files)
+                    foreach (var f in files)
                     {
                         string name = Path.GetFileName(f).ToLower();
                         if (name.Contains("launcher") || name.Contains("crash") || name.Contains("error")) continue;
-                        
+
                         long size = new FileInfo(f).Length;
                         if (size > largest)
                         {

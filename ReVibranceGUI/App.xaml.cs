@@ -1,6 +1,6 @@
-using ReVibranceGUI.Services;
 using System.Threading;
 using System.Windows;
+using ReVibranceGUI.Services;
 
 namespace ReVibranceGUI
 {
