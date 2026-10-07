@@ -8,7 +8,19 @@ namespace ReVibranceGUI.Services
         public int Height { get; set; }
         public int RefreshRate { get; set; }
 
-        public override string ToString() => $"{Width} x {Height} @ {RefreshRate}Hz";
+        public override string ToString() => $"{Width} x {Height} @ {RefreshRate} Hz";
+
+        public static DisplayResolution? Parse(string val)
+        {
+            if (string.IsNullOrWhiteSpace(val)) return null;
+            var parts = val.Split(new[] { 'x', '@', 'H', 'z', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2 && int.TryParse(parts[0], out int w) && int.TryParse(parts[1], out int h))
+            {
+                int r = parts.Length > 2 && int.TryParse(parts[2], out int rate) ? rate : 0;
+                return new DisplayResolution { Width = w, Height = h, RefreshRate = r };
+            }
+            return null;
+        }
     }
 
     public class DisplayDevice

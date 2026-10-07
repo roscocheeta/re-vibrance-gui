@@ -205,18 +205,19 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/> <!-- Icon -->
                                             <ColumnDefinition Width="*"/> <!-- Info and Slider -->
+                                            <ColumnDefinition Width="Auto"/> <!-- Settings Btn -->
                                             <ColumnDefinition Width="Auto"/> <!-- Remove Btn -->
                                         </Grid.ColumnDefinitions>
                                         
                                         <!-- Icon -->
-                                        <Image Grid.Column="0" Source="{Binding IconImage}" Width="40" Height="40" Margin="0,0,12,0"/>
+                                        <Image Grid.Column="0" Source="{Binding IconImage}" Width="40" Height="40" Margin="0,0,12,0" VerticalAlignment="Top"/>
                                         
                                         <!-- Center Content -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Top" Margin="0,0,10,0">
                                             <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource TextForeground}" Margin="0,0,0,8" TextTrimming="CharacterEllipsis"/>
                                             
                                             <!-- Vibrance Slider -->
-                                            <Grid Margin="0,0,0,6">
+                                            <Grid Margin="0,0,0,0">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="40"/>
@@ -225,35 +226,44 @@
                                                 <TextBlock Grid.Column="1" Text="{Binding VibranceLevel, StringFormat={}{0}%}" Foreground="{DynamicResource SecondaryTextForeground}" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                                             </Grid>
 
-                                            <!-- Advanced Settings -->
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="Display:" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextForeground}" Margin="0,0,5,0"/>
-                                                <ComboBox Grid.Column="1" SelectedValue="{Binding TargetDisplay, Mode=TwoWay}" SelectedValuePath="Content" Width="70" FontSize="11" Padding="4,2" SelectionChanged="Setting_Changed">
-                                                    <ComboBoxItem Content="Primary"/>
-                                                    <ComboBoxItem Content="All"/>
-                                                </ComboBox>
-                                                <CheckBox Grid.Column="3" Content="Change Resolution" IsChecked="{Binding ChangeResolution, Mode=TwoWay}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextForeground}" Click="Setting_Changed" />
-                                            </Grid>
-
-                                            <!-- Resolution Inputs (Visible if checked) -->
-                                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0" Visibility="{Binding ChangeResolution, Converter={StaticResource BoolToVis}}">
-                                                <TextBlock Text="W:" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextForeground}" Margin="0,0,3,0"/>
-                                                <TextBox Text="{Binding ResolutionWidth, Mode=TwoWay}" Width="45" FontSize="11" Padding="2" TextChanged="Setting_Changed"/>
-                                                <TextBlock Text="H:" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextForeground}" Margin="6,0,3,0"/>
-                                                <TextBox Text="{Binding ResolutionHeight, Mode=TwoWay}" Width="45" FontSize="11" Padding="2" TextChanged="Setting_Changed"/>
-                                                <TextBlock Text="Hz:" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource SecondaryTextForeground}" Margin="6,0,3,0"/>
-                                                <TextBox Text="{Binding RefreshRate, Mode=TwoWay}" Width="35" FontSize="11" Padding="2" TextChanged="Setting_Changed"/>
+                                            <!-- Advanced Settings (Collapsible) -->
+                                            <StackPanel Visibility="{Binding IsChecked, ElementName=AdvToggle, Converter={StaticResource BoolToVis}}" Margin="0,15,0,5">
+                                                <Grid Margin="0,0,0,8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="100"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Target Display" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource SecondaryTextForeground}"/>
+                                                    <ComboBox Grid.Column="1" SelectedValue="{Binding TargetDisplay, Mode=TwoWay}" SelectedValuePath="Content" FontSize="12" Padding="4" SelectionChanged="Setting_Changed" Background="{DynamicResource SectionBackground}" Foreground="{DynamicResource TextForeground}">
+                                                        <ComboBoxItem Content="Primary"/>
+                                                        <ComboBoxItem Content="All"/>
+                                                    </ComboBox>
+                                                </Grid>
+                                                
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="100"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Resolution" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource SecondaryTextForeground}"/>
+                                                    <CheckBox x:Name="ResCheck" Grid.Column="1" IsChecked="{Binding ChangeResolution, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,10,0" Click="Setting_Changed"/>
+                                                    
+                                                    <ComboBox Grid.Column="2" 
+                                                              Visibility="{Binding IsChecked, ElementName=ResCheck, Converter={StaticResource BoolToVis}}"
+                                                              ItemsSource="{Binding DataContext.AvailableResolutions, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                                              SelectedItem="{Binding TargetResolution, Mode=TwoWay}" 
+                                                              FontSize="12" Padding="4" SelectionChanged="Setting_Changed"
+                                                              Background="{DynamicResource SectionBackground}" Foreground="{DynamicResource TextForeground}"/>
+                                                </Grid>
                                             </StackPanel>
                                         </StackPanel>
                                         
+                                        <!-- Advanced Toggle -->
+                                        <ToggleButton x:Name="AdvToggle" Grid.Column="2" Content="⚙️" Width="28" Height="28" Background="Transparent" Foreground="{DynamicResource SecondaryTextForeground}" BorderThickness="0" Cursor="Hand" VerticalAlignment="Top" FontSize="14" Margin="0,0,5,0" ToolTip="Advanced Settings"/>
+                                        
                                         <!-- Remove -->
-                                        <Button Grid.Column="2" Content="✕" Width="28" Height="28" Background="Transparent" Foreground="#FF6B6B" BorderThickness="0" Cursor="Hand" Click="RemoveProcess_Click" FontWeight="Bold" FontSize="14" VerticalAlignment="Top"/>
+                                        <Button Grid.Column="3" Content="✕" Width="28" Height="28" Background="Transparent" Foreground="#FF6B6B" BorderThickness="0" Cursor="Hand" Click="RemoveProcess_Click" FontWeight="Bold" FontSize="14" VerticalAlignment="Top"/>
                                     </Grid>
                                 </Border>
                             </Grid>

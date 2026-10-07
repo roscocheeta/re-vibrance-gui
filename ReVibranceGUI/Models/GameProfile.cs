@@ -12,9 +12,10 @@ namespace ReVibranceGUI.Models
 
         public string TargetDisplay { get; set; } = "Primary";
         public bool ChangeResolution { get; set; } = false;
-        public int ResolutionWidth { get; set; } = 0;
-        public int ResolutionHeight { get; set; } = 0;
-        public int RefreshRate { get; set; } = 0;
+        public string TargetResolution { get; set; } = string.Empty;
+
+        [JsonIgnore]
+        public bool ShowAdvanced { get; set; } = false;
 
         [JsonIgnore]
         public ImageSource? IconImage { get; set; }

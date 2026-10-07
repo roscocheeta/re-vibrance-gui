@@ -29,6 +29,7 @@ namespace ReVibranceGUI
         private bool _isInitializing = true;
 
         public ObservableCollection<GameProfile> TargetProcesses { get; } = new();
+        public List<string> AvailableResolutions { get; } = DisplayManager.GetSupportedResolutions().Select(r => r.ToString()).ToList();
 
         private bool IsAutomatorRunning => _automator != null;
 
@@ -190,10 +191,11 @@ namespace ReVibranceGUI
                 if (_nvidiaProxy.IsInitialized) _nvidiaProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
                 if (_amdProxy.IsInitialized) _amdProxy.SetVibranceLevel(vibranceLevel, targetDisplay);
 
-                if (profile != null && profile.ChangeResolution && profile.ResolutionWidth > 0 && profile.ResolutionHeight > 0)
+                var res = profile != null && profile.ChangeResolution ? DisplayResolution.Parse(profile.TargetResolution) : null;
+                if (res != null)
                 {
                     string? devName = targetDisplay == "Primary" ? DisplayManager.GetDisplays().FirstOrDefault(d => d.IsPrimary)?.DeviceName : null;
-                    DisplayManager.SetResolution(devName, profile.ResolutionWidth, profile.ResolutionHeight, profile.RefreshRate);
+                    DisplayManager.SetResolution(devName, res.Width, res.Height, res.RefreshRate);
                 }
                 else
                 {
