@@ -24,5 +24,12 @@ namespace ReVibranceGUI.Services
 
         /// <summary>AMD ADL 0-200 to UI 0-100.</summary>
         public static int AmdToUi(int nativeLevel) => ClampUi(nativeLevel / 2);
+
+        /// <summary>Intel IGCL saturation is passed as a 0-100 float; UI is 0-100, so this is a clamped identity.</summary>
+        public static float UiToIntel(int uiLevel) => ClampUi(uiLevel);
+
+        /// <summary>Intel IGCL saturation float to UI 0-100 (rounded, clamped; NaN maps to the neutral 50).</summary>
+        public static int IntelToUi(float nativeLevel) =>
+            float.IsNaN(nativeLevel) ? 50 : ClampUi((int)Math.Round(Math.Clamp(nativeLevel, UiMin, UiMax)));
     }
 }
