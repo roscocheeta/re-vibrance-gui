@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using IGCLWrapper;
 using ReVibranceGUI.Services;
@@ -9,6 +10,11 @@ namespace ReVibranceGUI.Intel
     {
         public bool IsInitialized { get; private set; }
         private IGCLApiHelper? _api;
+
+        // Adapter/media helpers are cached: enumerating devices through IGCL on every
+        // read/write (the UI polls every few seconds) is needlessly expensive.
+        private readonly object _cacheLock = new();
+        private List<(IGCLAdapterHelper Adapter, IGCLMediaHelper Media)>? _cache;
 
         public ModernIntelVibranceProxy()
         {
@@ -25,19 +31,50 @@ namespace ReVibranceGUI.Intel
             }
         }
 
+        /// <summary>Returns the cached adapters, enumerating once on first use.</summary>
+        private List<(IGCLAdapterHelper Adapter, IGCLMediaHelper Media)> GetAdapters()
+        {
+            lock (_cacheLock)
+            {
+                if (_cache != null) return _cache;
+
+                var list = new List<(IGCLAdapterHelper, IGCLMediaHelper)>();
+                foreach (var adapter in _api!.EnumerateAdapters())
+                {
+                    list.Add((adapter, _api.GetMediaHelper(adapter)));
+                }
+                _cache = list;
+                return _cache;
+            }
+        }
+
+        private void InvalidateCache()
+        {
+            lock (_cacheLock)
+            {
+                if (_cache == null) return;
+                foreach (var (adapter, media) in _cache)
+                {
+                    media.Dispose();
+                    adapter.Dispose();
+                }
+                _cache = null;
+            }
+        }
+
         public string GetGpuNames()
         {
             if (!IsInitialized || _api == null) return "Intel GPU";
             try
             {
-                var adapters = _api.EnumerateAdapters();
-                if (adapters != null && adapters.Any())
+                if (GetAdapters().Count > 0)
                 {
                     return "Intel Graphics";
                 }
             }
             catch (Exception ex)
             {
+                InvalidateCache();
                 Logger.Warn("Error getting Intel GPU names", ex);
             }
             return "Intel GPU";
@@ -49,57 +86,61 @@ namespace ReVibranceGUI.Intel
 
             try
             {
-                var adapters = _api.EnumerateAdapters();
-                var primaryAdapter = adapters.FirstOrDefault();
-                if (primaryAdapter != null)
+                var primary = GetAdapters().FirstOrDefault();
+                if (primary.Media != null)
                 {
-                    var mediaHelper = _api.GetMediaHelper(primaryAdapter);
-                    var currentSettings = mediaHelper.GetStandardColorCorrection();
+                    var currentSettings = primary.Media.GetStandardColorCorrection();
                     if (currentSettings.HasValue)
                     {
-                        var settings = currentSettings.Value;
-                        // Map 0-100 float to 0-100 int
-                        return (int)Math.Round(settings.Saturation);
+                        return VibranceMath.IntelToUi(currentSettings.Value.Saturation);
                     }
                 }
             }
             catch (Exception ex)
             {
+                InvalidateCache();
                 Logger.Warn("Error reading Intel vibrance level", ex);
             }
             return 50;
         }
 
+        /// <remarks>
+        /// IGCL color correction is adapter-wide, so <paramref name="targetDisplay"/> cannot be honoured;
+        /// the change always applies to every Intel adapter.
+        /// </remarks>
         public void SetVibranceLevel(int level, string targetDisplay = "All")
         {
             if (!IsInitialized || _api == null) return;
 
             try
             {
-                foreach (var adapter in _api.EnumerateAdapters())
+                float saturation = VibranceMath.UiToIntel(level);
+                foreach (var (_, media) in GetAdapters())
                 {
-                    var mediaHelper = _api.GetMediaHelper(adapter);
-                    var currentSettings = mediaHelper.GetStandardColorCorrection();
+                    var currentSettings = media.GetStandardColorCorrection();
 
                     if (currentSettings.HasValue)
                     {
                         var newSettings = currentSettings.Value;
                         newSettings.Enable = true;
-                        newSettings.Saturation = (float)level; // 0.0f to 100.0f
+                        newSettings.Saturation = saturation;
 
-                        mediaHelper.SetStandardColorCorrection(newSettings);
+                        media.SetStandardColorCorrection(newSettings);
                     }
                 }
             }
             catch (Exception ex)
             {
+                InvalidateCache();
                 Logger.Error($"Error setting Intel vibrance to {level}", ex);
             }
         }
 
         public void Dispose()
         {
+            InvalidateCache();
             _api?.Dispose();
+            _api = null;
         }
     }
 }

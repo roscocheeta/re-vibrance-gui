@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Windows;
+using System.Runtime.InteropServices;
 using ReVibranceGUI.Services;
 
 namespace ReVibranceGUI
@@ -13,8 +14,23 @@ namespace ReVibranceGUI
         private const string MutexName = @"Local\ReVibranceGUI.SingleInstance";
         private Mutex? _instanceMutex;
 
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetDefaultDllDirectories(uint DirectoryFlags);
+
+        private const uint LOAD_LIBRARY_SEARCH_APPLICATION_DIR = 0x00000200;
+        private const uint LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800;
+
         protected override void OnStartup(StartupEventArgs e)
         {
+            try
+            {
+                SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_APPLICATION_DIR);
+            }
+            catch (EntryPointNotFoundException)
+            {
+                // Fallback for older OS versions if necessary
+            }
+
             base.OnStartup(e);
 
             _instanceMutex = new Mutex(initiallyOwned: true, MutexName, out bool createdNew);

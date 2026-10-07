@@ -21,6 +21,15 @@ namespace ReVibranceGUI.Services
             }
             return null;
         }
+
+        /// <summary>
+        /// Cheap sanity bounds for a requested mode. Not a substitute for <c>CDS_TEST</c>, but stops
+        /// absurd values (e.g. from a hand-edited settings file) before they reach the driver.
+        /// </summary>
+        public static bool IsPlausible(int width, int height, int refreshRate) =>
+            width is >= 320 and <= 16384 &&
+            height is >= 200 and <= 16384 &&
+            refreshRate is >= 0 and <= 1000;
     }
 
     public class DisplayDevice
@@ -87,8 +96,9 @@ namespace ReVibranceGUI.Services
         }
 
         private const int ENUM_CURRENT_SETTINGS = -1;
-        private const int ENUM_REGISTRY_SETTINGS = -2;
-        private const int CDS_UPDATEREGISTRY = 0x01;
+        // CDS_FULLSCREEN makes the mode change temporary: it is NOT written to the registry, and Windows
+        // reverts it automatically if this process exits or crashes. (CDS_UPDATEREGISTRY would persist it.)
+        private const int CDS_FULLSCREEN = 0x04;
         private const int CDS_TEST = 0x02;
         private const int DISP_CHANGE_SUCCESSFUL = 0;
         private const int DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x1;
@@ -102,6 +112,17 @@ namespace ReVibranceGUI.Services
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern int ChangeDisplaySettingsEx(string? lpszDeviceName, ref DEVMODE lpDevMode, IntPtr hwnd, uint dwflags, IntPtr lParam);
+
+        // Passing a NULL DEVMODE tells Windows to restore the registry (user-configured) mode.
+        [DllImport("user32.dll", EntryPoint = "ChangeDisplaySettingsExW", CharSet = CharSet.Unicode)]
+        private static extern int ChangeDisplaySettingsExReset(string? lpszDeviceName, IntPtr lpDevMode, IntPtr hwnd, uint dwflags, IntPtr lParam);
+
+        private static readonly object ChangeLock = new();
+
+        // Devices (null device name stored as "") whose mode WE changed and therefore must restore.
+        private static readonly HashSet<string> ChangedDevices = new(StringComparer.OrdinalIgnoreCase);
+
+        private static string DeviceKey(string? deviceName) => deviceName ?? string.Empty;
 
 
         public static List<DisplayDevice> GetDisplays()
@@ -175,11 +196,29 @@ namespace ReVibranceGUI.Services
 
         public static bool SetResolution(string? deviceName, int width, int height, int refreshRate)
         {
-            DEVMODE vDevMode = new();
-            vDevMode.dmSize = (short)Marshal.SizeOf(vDevMode);
-
-            if (EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref vDevMode))
+            if (!DisplayResolution.IsPlausible(width, height, refreshRate))
             {
+                Logger.Warn($"Ignoring implausible resolution request {width}x{height}@{refreshRate}");
+                return false;
+            }
+
+            lock (ChangeLock)
+            {
+                DEVMODE vDevMode = new();
+                vDevMode.dmSize = (short)Marshal.SizeOf(vDevMode);
+
+                if (!EnumDisplaySettings(deviceName, ENUM_CURRENT_SETTINGS, ref vDevMode))
+                {
+                    return false;
+                }
+
+                // Already at the requested mode: nothing to change (and nothing for us to restore).
+                if (vDevMode.dmPelsWidth == width && vDevMode.dmPelsHeight == height &&
+                    (refreshRate <= 0 || vDevMode.dmDisplayFrequency == refreshRate))
+                {
+                    return true;
+                }
+
                 vDevMode.dmPelsWidth = width;
                 vDevMode.dmPelsHeight = height;
                 if (refreshRate > 0)
@@ -189,22 +228,49 @@ namespace ReVibranceGUI.Services
                 vDevMode.dmFields = 0x00080000 | 0x00100000; // DM_PELSWIDTH | DM_PELSHEIGHT
                 if (refreshRate > 0) vDevMode.dmFields |= 0x00400000; // DM_DISPLAYFREQUENCY
 
-                int result = ChangeDisplaySettingsEx(deviceName, ref vDevMode, IntPtr.Zero, CDS_UPDATEREGISTRY, IntPtr.Zero);
-                return result == DISP_CHANGE_SUCCESSFUL;
+                // Validate first so an unsupported mode can never blank the display.
+                int test = ChangeDisplaySettingsEx(deviceName, ref vDevMode, IntPtr.Zero, CDS_TEST, IntPtr.Zero);
+                if (test != DISP_CHANGE_SUCCESSFUL)
+                {
+                    Logger.Warn($"Display mode {width}x{height}@{refreshRate} rejected by driver (code {test}).");
+                    return false;
+                }
+
+                int result = ChangeDisplaySettingsEx(deviceName, ref vDevMode, IntPtr.Zero, CDS_FULLSCREEN, IntPtr.Zero);
+                if (result == DISP_CHANGE_SUCCESSFUL)
+                {
+                    ChangedDevices.Add(DeviceKey(deviceName));
+                    return true;
+                }
+                return false;
             }
-            return false;
         }
 
+        /// <summary>
+        /// Restores the user's configured (registry) mode for one device, but only if this app changed it.
+        /// </summary>
         public static void RestoreResolution(string? deviceName = null)
         {
-            // Passing a default DEVMODE with 0 size or IntPtr.Zero resets to registry settings.
-            // A common trick is to use EnumDisplaySettings with ENUM_REGISTRY_SETTINGS.
-            DEVMODE vDevMode = new();
-            vDevMode.dmSize = (short)Marshal.SizeOf(vDevMode);
-
-            if (EnumDisplaySettings(deviceName, ENUM_REGISTRY_SETTINGS, ref vDevMode))
+            lock (ChangeLock)
             {
-                ChangeDisplaySettingsEx(deviceName, ref vDevMode, IntPtr.Zero, CDS_UPDATEREGISTRY, IntPtr.Zero);
+                if (!ChangedDevices.Remove(DeviceKey(deviceName))) return;
+                ChangeDisplaySettingsExReset(deviceName, IntPtr.Zero, IntPtr.Zero, 0, IntPtr.Zero);
+            }
+        }
+
+        /// <summary>
+        /// Restores every device this app changed. Cheap no-op when nothing was changed, so it is safe
+        /// to call on every profile switch and on exit.
+        /// </summary>
+        public static void RestoreAll()
+        {
+            lock (ChangeLock)
+            {
+                foreach (string key in ChangedDevices.ToList())
+                {
+                    ChangeDisplaySettingsExReset(key.Length == 0 ? null : key, IntPtr.Zero, IntPtr.Zero, 0, IntPtr.Zero);
+                }
+                ChangedDevices.Clear();
             }
         }
     }

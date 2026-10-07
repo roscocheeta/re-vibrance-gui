@@ -47,5 +47,30 @@ namespace ReVibranceGUI.Tests
         {
             Assert.Equal(expectedUi, VibranceMath.AmdToUi(nativeLevel));
         }
+
+        [Theory]
+        [InlineData(0, 0f)]
+        [InlineData(50, 50f)]
+        [InlineData(100, 100f)]
+        [InlineData(150, 100f)] // Clamp
+        [InlineData(-50, 0f)] // Clamp
+        public void UiToIntel_ShouldClamp(int uiLevel, float expectedNative)
+        {
+            Assert.Equal(expectedNative, VibranceMath.UiToIntel(uiLevel));
+        }
+
+        [Theory]
+        [InlineData(0f, 0)]
+        [InlineData(49.6f, 50)]
+        [InlineData(100f, 100)]
+        [InlineData(250f, 100)] // Clamp
+        [InlineData(-10f, 0)] // Clamp
+        [InlineData(float.NaN, 50)] // Neutral fallback
+        [InlineData(float.PositiveInfinity, 100)]
+        [InlineData(float.NegativeInfinity, 0)]
+        public void IntelToUi_ShouldRoundAndClamp(float nativeLevel, int expectedUi)
+        {
+            Assert.Equal(expectedUi, VibranceMath.IntelToUi(nativeLevel));
+        }
     }
 }
