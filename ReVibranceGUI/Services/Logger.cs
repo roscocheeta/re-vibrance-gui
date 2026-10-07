@@ -24,8 +24,17 @@ namespace ReVibranceGUI.Services
 
         private static void Write(string level, string message, Exception? ex)
         {
+            if (message != null)
+            {
+                message = new string(message.Where(c => !char.IsControl(c)).ToArray());
+            }
+
             string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}";
-            if (ex != null) line += $" | {ex.GetType().Name}: {ex.Message}";
+            if (ex != null)
+            {
+                string exMsg = new string(ex.Message.Where(c => !char.IsControl(c)).ToArray());
+                line += $" | {ex.GetType().Name}: {exMsg}";
+            }
             Debug.WriteLine(line);
 
             try

@@ -80,6 +80,27 @@ namespace ReVibranceGUI.Services
                     p.VibranceLevel = VibranceMath.ClampUi(p.VibranceLevel);
                     p.DisplayName ??= p.ExeName;
                     p.ExePath ??= string.Empty;
+                    
+                    // Cap string lengths
+                    if (p.DisplayName.Length > 255) p.DisplayName = p.DisplayName.Substring(0, 255);
+                    if (p.ExeName.Length > 255) p.ExeName = p.ExeName.Substring(0, 255);
+                    if (p.ExePath.Length > 500) p.ExePath = p.ExePath.Substring(0, 500);
+
+                    // Reject UNC paths to prevent NTLM credential leaks
+                    if (p.ExePath.StartsWith(@"\\") || p.ExePath.StartsWith("//"))
+                    {
+                        p.ExePath = string.Empty;
+                    }
+
+                    // Validate TargetResolution format (e.g. 1920x1080 or 1920x1080@144Hz)
+                    if (!string.IsNullOrWhiteSpace(p.TargetResolution))
+                    {
+                        if (p.TargetResolution.Length > 50 || !System.Text.RegularExpressions.Regex.IsMatch(p.TargetResolution, @"^\d{3,5}x\d{3,5}(@\d{1,3}Hz)?$"))
+                        {
+                            p.TargetResolution = string.Empty;
+                        }
+                    }
+
                     return p;
                 })
                 .ToList();
