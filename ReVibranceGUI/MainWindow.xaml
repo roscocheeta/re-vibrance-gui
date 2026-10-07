@@ -15,7 +15,7 @@
         
         <!-- Style for the main Action Button -->
         <Style x:Key="AccentButton" TargetType="Button">
-            <Setter Property="Background" Value="#4FCDC0"/>
+            <Setter Property="Background" Value="#009688"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Padding" Value="10"/>
@@ -81,8 +81,8 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
-                                <Setter TargetName="Border" Property="Background" Value="#4FCDC0"/>
-                                <Setter TargetName="Border" Property="BorderBrush" Value="#4FCDC0"/>
+                                <Setter TargetName="Border" Property="Background" Value="#009688"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#009688"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Border" Property="BorderBrush" Value="#888888"/>

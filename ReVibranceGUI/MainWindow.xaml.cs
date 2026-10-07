@@ -19,7 +19,7 @@ namespace ReVibranceGUI
         private static readonly SolidColorBrush ActiveGreen = Freeze(System.Windows.Media.Color.FromRgb(0x4C, 0xAF, 0x50));
         private static readonly SolidColorBrush IdleGrey = Freeze(System.Windows.Media.Color.FromRgb(0x99, 0x99, 0x99));
         private static readonly SolidColorBrush StopButtonRed = Freeze(System.Windows.Media.Color.FromRgb(0xFF, 0x4B, 0x4B));
-        private static readonly SolidColorBrush StartButtonBlue = Freeze(System.Windows.Media.Color.FromRgb(0x4F, 0xCD, 0xC0));
+        private static readonly SolidColorBrush StartButtonBlue = Freeze(System.Windows.Media.Color.FromRgb(0x00, 0x96, 0x88));
 
         private readonly ModernNvidiaVibranceProxy _nvidiaProxy;
         private readonly ModernAmdVibranceProxy _amdProxy;
