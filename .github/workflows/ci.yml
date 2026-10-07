@@ -65,18 +65,18 @@ jobs:
         path: ReVibranceGUI-Release
 
     - name: Zip for Release
-      run: Compress-Archive -Path ReVibranceGUI-Release/* -DestinationPath ReVibranceGUI.zip
+      run: Compress-Archive -Path ReVibranceGUI-Release/* -DestinationPath ReVibranceGUI-${{ github.ref_name }}.zip
 
     - name: Generate Checksum
       run: |
-        $hash = Get-FileHash ReVibranceGUI.zip -Algorithm SHA256
-        $hashString = $hash.Hash + "  ReVibranceGUI.zip"
-        Set-Content -Path ReVibranceGUI.zip.sha256 -Value $hashString
+        $hash = Get-FileHash ReVibranceGUI-${{ github.ref_name }}.zip -Algorithm SHA256
+        $hashString = $hash.Hash + "  ReVibranceGUI-${{ github.ref_name }}.zip"
+        Set-Content -Path ReVibranceGUI-${{ github.ref_name }}.zip.sha256 -Value $hashString
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v2.0.8
       with:
         files: |
-          ReVibranceGUI.zip
-          ReVibranceGUI.zip.sha256
+          ReVibranceGUI-${{ github.ref_name }}.zip
+          ReVibranceGUI-${{ github.ref_name }}.zip.sha256
         generate_release_notes: true
