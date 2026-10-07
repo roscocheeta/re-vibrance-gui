@@ -46,7 +46,10 @@ namespace ReVibranceGUI.Nvidia
 
             try
             {
-                var primary = Display.GetDisplays().FirstOrDefault();
+                string? primaryDeviceName = DisplayManager.GetDisplays().FirstOrDefault(d => d.IsPrimary)?.DeviceName;
+                var displays = Display.GetDisplays();
+                var primary = displays.FirstOrDefault(d => d.Name == primaryDeviceName) ?? displays.FirstOrDefault();
+
                 if (primary != null)
                 {
                     return VibranceMath.NvidiaToUi(primary.DigitalVibranceControl.CurrentLevel);
