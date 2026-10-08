@@ -1,4 +1,4 @@
-# ReVibranceGUI
+# <img src="assets/logo.svg" width="48" align="absmiddle" alt="ReVibranceGUI Logo" /> ReVibranceGUI
 
 ReVibranceGUI is a lightweight, modern Windows desktop utility that automates NVIDIA, AMD, and Intel GPU vibrance (digital saturation) settings based on the currently active application.
 
