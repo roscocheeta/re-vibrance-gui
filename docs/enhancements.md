@@ -17,6 +17,7 @@ This document tracks planned features, UI improvements, and technical enhancemen
 - [x] **Target Display Selection:** Add a setting to allow the vibrance (and resolution) changes to affect only the Primary Monitor, or let the user choose exactly which displays are affected, leaving other monitors untouched.
 - [x] **Process Icons in List:** Extract and display the actual `.exe` or `.ico` icon for each game next to its name in the Monitored Games list, providing a much richer, more visual experience compared to raw text.
   - *Note: This will likely require increasing the default dimensions of the main GUI window to comfortably accommodate larger "Game Cards" (with icons and per-game sliders) in the monitored games area.*
+- [ ] **Active Process Indicator:** Add a minimal visual indicator directly on the game's profile card in the UI to signify when that specific `.exe` is actively "Detected running". This will provide clear feedback on which profile the automator has currently hooked into, independent of the global monitoring status.
 
 ## Quality of Life & Automation
 - [x] **System Tray Context Menu:** Implement a right-click context menu for the Windows system tray icon to provide quick access to core application controls without opening the main window, including:
