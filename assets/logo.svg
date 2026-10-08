@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- Vibrant, high-contrast gradient -->
+    <linearGradient id="vibranceGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF3366" />
+      <stop offset="50%" stop-color="#FF9933" />
+      <stop offset="100%" stop-color="#00E5FF" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Windows 11 Fluent Squircle Background -->
+  <rect x="16" y="16" width="224" height="224" rx="56" fill="#1C1C1C" />
+  
+  <!-- Minimalist 'V' -->
+  <path d="M 80 88 L 128 176 L 176 88" 
+        fill="none" 
+        stroke="url(#vibranceGrad)" 
+        stroke-width="32" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+</svg>
