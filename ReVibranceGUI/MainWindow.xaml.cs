@@ -109,6 +109,42 @@ namespace ReVibranceGUI
             };
             syncTimer.Start();
 
+            // R6: Background poller to update the "Detected running" visual indicator on game cards.
+            var processStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            processStatusTimer.Tick += async (_, _) =>
+            {
+                if (!IsVisible || WindowState == WindowState.Minimized || TargetProcesses.Count == 0) return;
+
+                var exeNamesToUpdate = TargetProcesses.Select(p => p.ExeName).Distinct().ToList();
+
+                var runningStates = await Task.Run(() =>
+                {
+                    var states = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+                    var runningNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var p in Process.GetProcesses())
+                    {
+                        using (p) { try { runningNames.Add(p.ProcessName); } catch { } }
+                    }
+
+                    foreach (var exe in exeNamesToUpdate)
+                    {
+                        string norm = VibranceAutomator.NormalizeProcessName(exe);
+                        states[exe] = runningNames.Contains(norm);
+                    }
+                    return states;
+                });
+
+                foreach (var profile in TargetProcesses)
+                {
+                    if (runningStates.TryGetValue(profile.ExeName, out bool isRunning) && profile.IsRunning != isRunning)
+                    {
+                        profile.IsRunning = isRunning;
+                    }
+                }
+            };
+            processStatusTimer.Start();
+
             _isInitializing = false;
 
             if (_launchedOnStartup && AutoStartMonitoringCheckBox.IsChecked == true && RunOnStartupCheckBox.IsChecked == true)

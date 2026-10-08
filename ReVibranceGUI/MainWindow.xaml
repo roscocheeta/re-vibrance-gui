@@ -337,8 +337,15 @@
                                             <ColumnDefinition Width="Auto"/> <!-- Remove Btn -->
                                         </Grid.ColumnDefinitions>
                                         
-                                        <!-- Icon -->
-                                        <Image Grid.Column="0" Source="{Binding IconImage}" Width="40" Height="40" Margin="0,0,12,0" VerticalAlignment="Top"/>
+                                        <!-- Icon with Status -->
+                                        <Grid Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Top" Width="40" Height="40">
+                                            <Image Source="{Binding IconImage}" Width="40" Height="40"/>
+                                            <Ellipse Width="10" Height="10" Fill="#4CAF50" 
+                                                     HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                     Stroke="{DynamicResource WindowBackground}" StrokeThickness="1.5"
+                                                     Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}"
+                                                     ToolTip="Detected running"/>
+                                        </Grid>
                                         
                                         <!-- Center Content -->
                                         <StackPanel Grid.Column="1" VerticalAlignment="Top" Margin="0,0,10,0">
