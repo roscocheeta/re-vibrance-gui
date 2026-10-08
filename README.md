@@ -7,6 +7,12 @@ This project is a complete C# WPF / .NET 8 architectural rewrite of the original
 > [!WARNING]
 > **Experimental Hardware Support:** While ReVibranceGUI natively supports NVIDIA, AMD, and Intel GPUs, it has currently only been actively tested on NVIDIA hardware. AMD and Intel integrations are experimental and may not work exactly as intended. Bug reports are welcome!
 
+<div align="center">
+  <img src="assets/screenshot-light.png" width="40%" alt="ReVibranceGUI Light Mode" />
+  &nbsp; &nbsp;
+  <img src="assets/screenshot-dark.png" width="40%" alt="ReVibranceGUI Dark Mode" />
+</div>
+
 ## ✨ Features
 
 - **Per-Process Customization:** Configure specific vibrance levels (50% - 100%) for individual games.
