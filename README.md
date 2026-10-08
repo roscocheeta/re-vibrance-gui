@@ -28,9 +28,17 @@ This project is a complete C# WPF / .NET 8 architectural rewrite of the original
 4. **Unified Math Engine:** NVIDIA, AMD, and Intel APIs scale vibrance differently. The core `VibranceMath` engine normalizes them all into a unified, predictable `0%` to `100%` scale for the UI.
 5. **Multi-Monitor Awareness:** Allows you to target vibrance changes strictly to your *Primary* monitor, or broadcast them across *All* connected monitors.
 
+## 🚀 Usage Requirements
+
+To run ReVibranceGUI, you will need:
+- **OS:** Windows 10 or Windows 11
+- **Runtime:** [.NET 8.0 Desktop Runtime (v8.0.x)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) 
+
+Download the latest `ReVibranceGUI.exe` from the [Releases](https://github.com/roscocheeta/re-vibrance-gui/releases) page and run it.
+
 ## 🛠️ Development & Building
 
-### Requirements
+### Build Requirements
 - **OS:** Windows 10/11
 - **Framework:** .NET 8 SDK (`net8.0-windows`)
 
