@@ -19,6 +19,7 @@ namespace ReVibranceGUI.Tests
             Assert.Equal("Auto", settings.Theme);
             Assert.False(settings.EnablePauseHotkey);
             Assert.Equal(string.Empty, settings.PauseHotkey);
+            Assert.False(settings.AutoStartMonitoring);
 
             Assert.Empty(settings.GameProfiles);
         }
@@ -31,7 +32,8 @@ namespace ReVibranceGUI.Tests
                 MinimizeToTray = true,
                 Theme = "Dark",
                 EnablePauseHotkey = true,
-                PauseHotkey = "Ctrl+Shift+P"
+                PauseHotkey = "Ctrl+Shift+P",
+                AutoStartMonitoring = true
             };
 
             settings.GameProfiles.Add(new GameProfile
@@ -55,6 +57,7 @@ namespace ReVibranceGUI.Tests
             Assert.Equal("Dark", deserialized.Theme);
             Assert.True(deserialized.EnablePauseHotkey);
             Assert.Equal("Ctrl+Shift+P", deserialized.PauseHotkey);
+            Assert.True(deserialized.AutoStartMonitoring);
             Assert.Single(deserialized.GameProfiles);
 
             var profile = deserialized.GameProfiles.First();

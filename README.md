@@ -15,6 +15,8 @@ This project is a complete C# WPF / .NET 8 architectural rewrite of the original
 - **Multi-GPU Support:** Supports NVIDIA (via NVAPI), AMD (via ADL), and Intel (via IGCL) graphics cards natively.
 - **Hardware Integration:** The UI directly queries and visualizes your detected graphics adapter state.
 - **Non-Intrusive:** Minimizes silently to the Windows System Tray and runs securely on Windows Startup without UAC prompts.
+- **Silent Boot:** Launch completely invisible in the background on Windows startup when configured to minimize to tray, bypassing the main window entirely.
+- **Auto-Start Monitoring:** Choose whether to automatically begin monitoring games when ReVibranceGUI launches.
 - **System Tray Controls:** Right-click the system tray icon to pause, resume, or exit the application.
 - **Global Pause Hotkey:** Easily pause and resume vibrance adjustments using a custom global keyboard shortcut.
 - **Auto-Update Notifications:** Automatically notifies you when a new version of ReVibranceGUI is available.

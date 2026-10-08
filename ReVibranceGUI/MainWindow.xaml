@@ -87,6 +87,9 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Border" Property="BorderBrush" Value="#888888"/>
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -401,6 +404,7 @@
         <!-- Application Behavior -->
         <StackPanel Grid.Row="3" Margin="0,0,0,20">
             <CheckBox x:Name="RunOnStartupCheckBox" Content="Run on Startup" Foreground="{DynamicResource TextForeground}" Margin="0,0,0,8" Checked="RunOnStartupCheckBox_Checked" Unchecked="RunOnStartupCheckBox_Unchecked"/>
+            <CheckBox x:Name="AutoStartMonitoringCheckBox" Content="Auto-start monitoring on startup" Foreground="{DynamicResource TextForeground}" Margin="20,0,0,8" IsEnabled="{Binding ElementName=RunOnStartupCheckBox, Path=IsChecked}"/>
             <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Minimize to system tray when monitoring" Foreground="{DynamicResource TextForeground}" Margin="0,0,0,8"/>
             <Grid MinHeight="28">
                 <Grid.ColumnDefinitions>

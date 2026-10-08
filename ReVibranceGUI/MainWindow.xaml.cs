@@ -42,8 +42,11 @@ namespace ReVibranceGUI
 
         private bool IsAutomatorRunning => _automator != null;
 
-        public MainWindow()
+        private readonly bool _launchedOnStartup;
+
+        public MainWindow(bool isStartup = false)
         {
+            _launchedOnStartup = isStartup;
             InitializeComponent();
             DataContext = this;
 
@@ -72,6 +75,8 @@ namespace ReVibranceGUI
             TargetProcesses.CollectionChanged += (_, _) => ScheduleSave();
             MinimizeToTrayCheckBox.Checked += (_, _) => ScheduleSave();
             MinimizeToTrayCheckBox.Unchecked += (_, _) => ScheduleSave();
+            AutoStartMonitoringCheckBox.Checked += (_, _) => ScheduleSave();
+            AutoStartMonitoringCheckBox.Unchecked += (_, _) => ScheduleSave();
 
             // Background poller to sync external NVIDIA Control Panel changes.
             // The driver read runs off the UI thread and is skipped while the window is hidden.
@@ -105,6 +110,11 @@ namespace ReVibranceGUI
             syncTimer.Start();
 
             _isInitializing = false;
+
+            if (_launchedOnStartup && AutoStartMonitoringCheckBox.IsChecked == true && RunOnStartupCheckBox.IsChecked == true)
+            {
+                Dispatcher.BeginInvoke(new Action(() => ToggleMonitoring()), System.Windows.Threading.DispatcherPriority.Background);
+            }
         }
 
         // ───────────────────────────── Setup ─────────────────────────────
@@ -284,6 +294,7 @@ namespace ReVibranceGUI
             var settings = SettingsManager.Load();
             MinimizeToTrayCheckBox.IsChecked = settings.MinimizeToTray;
             EnablePauseHotkeyCheckBox.IsChecked = settings.EnablePauseHotkey;
+            AutoStartMonitoringCheckBox.IsChecked = settings.AutoStartMonitoring;
 
             foreach (var profile in settings.GameProfiles)
             {
@@ -314,6 +325,7 @@ namespace ReVibranceGUI
                 Theme = ThemeLightBtn.IsChecked == true ? "Light" : ThemeDarkBtn.IsChecked == true ? "Dark" : "Auto",
                 EnablePauseHotkey = EnablePauseHotkeyCheckBox.IsChecked == true,
                 PauseHotkey = PauseHotkeyTextBox.Text,
+                AutoStartMonitoring = AutoStartMonitoringCheckBox.IsChecked == true,
                 GameProfiles = TargetProcesses.ToList()
             });
         }

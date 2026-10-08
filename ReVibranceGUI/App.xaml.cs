@@ -55,7 +55,17 @@ namespace ReVibranceGUI
             };
 
             Logger.Info($"ReVibranceGUI {typeof(App).Assembly.GetName().Version} starting.");
-            new MainWindow().Show();
+            
+            bool isStartup = e.Args.Contains("-startup");
+            var mainWindow = new MainWindow(isStartup);
+            
+            // If it's a startup launch and we are supposed to minimize to tray, don't show the window at all.
+            // ToggleMonitoring will be called inside MainWindow, which will handle the tray icon.
+            var settings = SettingsManager.Load();
+            if (!(isStartup && settings.MinimizeToTray))
+            {
+                mainWindow.Show();
+            }
         }
 
         protected override void OnExit(ExitEventArgs e)

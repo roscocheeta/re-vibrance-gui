@@ -17,10 +17,12 @@ This document tracks planned features, UI improvements, and technical enhancemen
 - [x] **Target Display Selection:** Add a setting to allow the vibrance (and resolution) changes to affect only the Primary Monitor, or let the user choose exactly which displays are affected, leaving other monitors untouched.
 - [x] **Process Icons in List:** Extract and display the actual `.exe` or `.ico` icon for each game next to its name in the Monitored Games list, providing a much richer, more visual experience compared to raw text.
   - *Note: This will likely require increasing the default dimensions of the main GUI window to comfortably accommodate larger "Game Cards" (with icons and per-game sliders) in the monitored games area.*
+- [ ] **Active Process Indicator:** Add a minimal visual indicator directly on the game's profile card in the UI to signify when that specific `.exe` is actively "Detected running". This will provide clear feedback on which profile the automator has currently hooked into, independent of the global monitoring status.
 
 ## Quality of Life & Automation
 - [x] **System Tray Context Menu:** Implement a right-click context menu for the Windows system tray icon to provide quick access to core application controls without opening the main window, including:
   - **Stop / Start Monitoring:** A toggle to quickly pause or resume the background game-detection loop.
   - **Exit App:** A direct option to completely close ReVibranceGUI.
 - [x] **Global Hotkey for Pausing:** Implement a global keyboard hook to allow users to bind a custom keyboard shortcut to toggle the "Pause/Resume" state of the vibrance monitoring loop. (Modeled after similar capabilities in SteffenCarlsen's fork of the original VibranceGUI).
-- [ ] **Automatic Version Checker:** Query the GitHub API on application startup to check for new releases. Display a non-intrusive notification (e.g., a subtle "Update Available!" link in the footer) that takes the user to the GitHub Releases page.
+- [x] **Automatic Version Checker:** Query the GitHub API on application startup to check for new releases. Display a non-intrusive notification (e.g., a subtle "Update Available!" link in the footer) that takes the user to the GitHub Releases page.
+- [x] **Auto-Start Monitoring on Startup:** Add a setting to automatically begin the monitoring loop when the application launches. This setting should logically depend on the "Run on Startup" setting being enabled. The UI/UX needs to reflect this dependency (e.g., indenting the checkbox or disabling it when "Run on Startup" is unchecked) to align with best practices.
