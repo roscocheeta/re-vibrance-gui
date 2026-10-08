@@ -42,8 +42,11 @@ namespace ReVibranceGUI
 
         private bool IsAutomatorRunning => _automator != null;
 
-        public MainWindow()
+        private readonly bool _launchedOnStartup;
+
+        public MainWindow(bool isStartup = false)
         {
+            _launchedOnStartup = isStartup;
             InitializeComponent();
             DataContext = this;
 
@@ -108,7 +111,7 @@ namespace ReVibranceGUI
 
             _isInitializing = false;
 
-            if (AutoStartMonitoringCheckBox.IsChecked == true && RunOnStartupCheckBox.IsChecked == true)
+            if (_launchedOnStartup && AutoStartMonitoringCheckBox.IsChecked == true && RunOnStartupCheckBox.IsChecked == true)
             {
                 Dispatcher.BeginInvoke(new Action(() => ToggleMonitoring()), System.Windows.Threading.DispatcherPriority.Background);
             }
