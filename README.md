@@ -2,10 +2,16 @@
 
 ReVibranceGUI is a lightweight, modern Windows desktop utility that automates NVIDIA, AMD, and Intel GPU vibrance (digital saturation) settings based on the currently active application.
 
-This project is a complete C# WPF / .NET 8 architectural rewrite of the original [vibranceGUI](https://github.com/juvander/vibranceGUI) tool, replacing legacy Windows Forms components with modern APIs, robust background polling, and intelligent game-detection heuristics.
+This project is a complete C# WPF / .NET 8 architectural rewrite of the original [vibranceGUI](https://github.com/juvander/vibranceGUI) tool (and draws inspiration from [SteffenCarlsen's fork](https://github.com/SteffenCarlsen/vibranceGUI)), replacing legacy Windows Forms components with modern APIs, robust background polling, and intelligent game-detection heuristics.
 
 > [!WARNING]
 > **Experimental Hardware Support:** While ReVibranceGUI natively supports NVIDIA, AMD, and Intel GPUs, it has currently only been actively tested on NVIDIA hardware. AMD and Intel integrations are experimental and may not work exactly as intended. Bug reports are welcome!
+
+<div align="center">
+  <img src="assets/screenshot-light.png" width="40%" alt="ReVibranceGUI Light Mode" />
+  &nbsp; &nbsp;
+  <img src="assets/screenshot-dark.png" width="40%" alt="ReVibranceGUI Dark Mode" />
+</div>
 
 ## ✨ Features
 
@@ -50,10 +56,12 @@ dotnet build ReVibranceGUI.sln --configuration Release
 The executable will be located in `ReVibranceGUI/bin/Release/net8.0-windows/`.
 
 ### Testing
-We use `xUnit` for regression testing on the internal settings engines and heuristic scanners.
+We use `xUnit` for regression testing on the internal settings engines and heuristic scanners. 
+For a detailed breakdown of our testing strategy and what is covered, please see our [Testing Guide](TESTING.md).
+
 ```bash
 dotnet test ReVibranceGUI.sln
 ```
 
 ## 📜 License
-This project is a complete rewrite of the original `vibranceGUI` by juvander and SteffenCarlsen. Please note that the original upstream repositories do not contain an explicit open-source license. This rewrite is provided for educational and personal use.
+This project is a complete rewrite of the original `vibranceGUI` by [juvander](https://github.com/juvander) and [SteffenCarlsen](https://github.com/SteffenCarlsen). Please note that the original upstream repositories do not contain an explicit open-source license. This rewrite is provided for educational and personal use.
