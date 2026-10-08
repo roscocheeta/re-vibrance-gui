@@ -145,6 +145,12 @@ namespace ReVibranceGUI
             };
             processStatusTimer.Start();
 
+            var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            if (currentVersion != null)
+            {
+                VersionText.Text = $"v{currentVersion.ToString(3)}";
+            }
+
             _isInitializing = false;
 
             if (_launchedOnStartup && AutoStartMonitoringCheckBox.IsChecked == true && RunOnStartupCheckBox.IsChecked == true)
