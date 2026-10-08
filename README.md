@@ -56,7 +56,9 @@ dotnet build ReVibranceGUI.sln --configuration Release
 The executable will be located in `ReVibranceGUI/bin/Release/net8.0-windows/`.
 
 ### Testing
-We use `xUnit` for regression testing on the internal settings engines and heuristic scanners.
+We use `xUnit` for regression testing on the internal settings engines and heuristic scanners. 
+For a detailed breakdown of our testing strategy and what is covered, please see our [Testing Guide](TESTING.md).
+
 ```bash
 dotnet test ReVibranceGUI.sln
 ```
