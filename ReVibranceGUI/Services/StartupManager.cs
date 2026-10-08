@@ -14,7 +14,7 @@ namespace ReVibranceGUI.Services
         /// Builds the Run-key command. Fixes C3 (.NET 8 Assembly.Location returns the .dll,
         /// which Windows cannot launch) and S1 (unquoted paths with spaces, CWE-428).
         /// </summary>
-        public static string BuildCommand(string exePath) => $"\"{exePath}\"";
+        public static string BuildCommand(string exePath) => $"\"{exePath}\" -startup";
 
         private static string? CurrentExePath => Environment.ProcessPath;
 
