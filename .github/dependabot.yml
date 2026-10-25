@@ -19,10 +19,3 @@ updates:
     schedule:
       interval: "weekly"
     target-branch: "dev"
-
-  # Maintain git submodules
-  - package-ecosystem: "gitsubmodule"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    target-branch: "dev"
