@@ -160,13 +160,13 @@ namespace ReVibranceGUI
         }
 
         // ───────────────────────────── Setup ─────────────────────────────
-        
+
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
-            
+
             _pauseHotkey = new GlobalHotkey(this, () => Dispatcher.Invoke(() => ToggleMonitoring(true)));
-            
+
             var settings = SettingsManager.Load();
             if (!string.IsNullOrEmpty(settings.PauseHotkey))
             {
@@ -212,7 +212,14 @@ namespace ReVibranceGUI
         {
             try
             {
-                Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+                if (e.Uri != null && (e.Uri.Scheme == Uri.UriSchemeHttps || e.Uri.Scheme == Uri.UriSchemeHttp))
+                {
+                    Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+                }
+                else
+                {
+                    Logger.Warn($"Blocked attempt to open non-http/https URI: {e.Uri}");
+                }
             }
             catch (Exception ex)
             {
@@ -267,11 +274,11 @@ namespace ReVibranceGUI
             var toggleItem = new System.Windows.Forms.ToolStripMenuItem("Start / Stop Monitoring");
             toggleItem.Click += (_, _) => Dispatcher.Invoke(() => ToggleMonitoring());
             contextMenu.Items.Add(toggleItem);
-            
+
             var exitItem = new System.Windows.Forms.ToolStripMenuItem("Exit");
             exitItem.Click += (_, _) => Dispatcher.Invoke(Close);
             contextMenu.Items.Add(exitItem);
-            
+
             icon.ContextMenuStrip = contextMenu;
 
             icon.DoubleClick += (_, _) =>
@@ -389,7 +396,7 @@ namespace ReVibranceGUI
             SaveSettings();
 
             _pauseHotkey?.Dispose();
-            
+
             _automator?.Stop();
             _automator = null;
 
@@ -509,9 +516,9 @@ namespace ReVibranceGUI
         private void PauseHotkeyTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             e.Handled = true;
-            
+
             var key = (e.Key == Key.System ? e.SystemKey : e.Key);
-            
+
             if (key == Key.LeftShift || key == Key.RightShift ||
                 key == Key.LeftCtrl || key == Key.RightCtrl ||
                 key == Key.LeftAlt || key == Key.RightAlt ||
@@ -522,13 +529,13 @@ namespace ReVibranceGUI
 
             var modifiers = Keyboard.Modifiers;
             _pauseHotkey?.Unregister();
-            
+
             if (_pauseHotkey != null && _pauseHotkey.Register(key, modifiers))
             {
                 string keyName = key.ToString();
                 string modName = modifiers == ModifierKeys.None ? "" : modifiers.ToString().Replace(", ", "+") + "+";
                 PauseHotkeyTextBox.Text = $"{modName}{keyName}";
-                
+
                 var settings = SettingsManager.Load();
                 settings.PauseHotkey = PauseHotkeyTextBox.Text;
                 SettingsManager.Save(settings);
@@ -551,7 +558,7 @@ namespace ReVibranceGUI
         private void EnablePauseHotkeyCheckBox_Changed(object sender, RoutedEventArgs e)
         {
             if (_isInitializing) return;
-            
+
             if (EnablePauseHotkeyCheckBox.IsChecked == true)
             {
                 if (!string.IsNullOrEmpty(PauseHotkeyTextBox.Text) && PauseHotkeyTextBox.Text != "Failed to register")

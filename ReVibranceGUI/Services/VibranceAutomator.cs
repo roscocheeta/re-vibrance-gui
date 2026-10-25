@@ -49,7 +49,8 @@ namespace ReVibranceGUI.Services
 
         public static string NormalizeProcessName(string exeName)
         {
-            string p = exeName.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(exeName)) return string.Empty;
+            string p = System.IO.Path.GetFileName(exeName.Trim()).ToLowerInvariant();
             return p.EndsWith(".exe", StringComparison.Ordinal) ? p[..^4] : p;
         }
 

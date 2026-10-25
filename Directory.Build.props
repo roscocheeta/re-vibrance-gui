@@ -16,5 +16,10 @@
 
     <!-- Warnings in our own code fail the build. Vendor code is exempted via .editorconfig. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Native .NET 8 dependency vulnerability auditing (direct and transitive). -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>moderate</NuGetAuditLevel>
   </PropertyGroup>
 </Project>

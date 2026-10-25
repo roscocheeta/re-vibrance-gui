@@ -19,7 +19,7 @@ namespace ReVibranceGUI.Helpers
         private readonly int _id;
         private readonly Action _onHotkey;
         private bool _isRegistered;
-        
+
         public GlobalHotkey(System.Windows.Window window, Action onHotkey)
         {
             _onHotkey = onHotkey;
@@ -31,14 +31,14 @@ namespace ReVibranceGUI.Helpers
             }
             _id = GetHashCode();
         }
-        
+
         public bool Register(Key key, ModifierKeys modifiers)
         {
             if (_isRegistered)
             {
                 Unregister();
             }
-            
+
             if (_source == null || key == Key.None) return false;
 
             uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
@@ -47,11 +47,11 @@ namespace ReVibranceGUI.Helpers
             if (modifiers.HasFlag(ModifierKeys.Control)) mod |= 2;
             if (modifiers.HasFlag(ModifierKeys.Shift)) mod |= 4;
             if (modifiers.HasFlag(ModifierKeys.Windows)) mod |= 8;
-            
+
             _isRegistered = RegisterHotKey(_source.Handle, _id, mod, vk);
             return _isRegistered;
         }
-        
+
         public void Unregister()
         {
             if (_isRegistered && _source != null)

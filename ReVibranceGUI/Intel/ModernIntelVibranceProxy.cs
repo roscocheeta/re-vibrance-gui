@@ -23,7 +23,7 @@ namespace ReVibranceGUI.Intel
                     Version = 0,
                     flags = 0
                 };
-                
+
                 var result = ControlLib.ctlInit(ref initArgs, out _apiHandle);
                 if (result == ctl_result_t.CTL_RESULT_SUCCESS && _apiHandle != IntPtr.Zero)
                 {

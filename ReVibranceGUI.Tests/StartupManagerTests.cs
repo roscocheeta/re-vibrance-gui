@@ -1,5 +1,5 @@
-using Xunit;
 using ReVibranceGUI.Services;
+using Xunit;
 
 namespace ReVibranceGUI.Tests
 {
