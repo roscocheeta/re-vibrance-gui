@@ -9,9 +9,10 @@ As a best practice, our test methods are named descriptively to act as self-docu
 ## 🧪 Test Architecture & Strategy
 
 ### 1. In-Memory Native Seams (Fast Unit Tests)
-Instead of spinning up external drivers or relying on physical GPU hardware, the test suite leverages the `IVibranceProxy` interface abstraction.
-- All unit tests run against clean in-memory fakes.
-- The entire test suite executes in under **1 second** on local developer machines and CI runners with **0 external dependencies**.
+Instead of spinning up external drivers, physical GPU hardware, or external web servers, the test suite leverages in-memory seams:
+- **Vibrance Drivers:** Tested via clean in-memory `IVibranceProxy` fakes.
+- **Auto-Updater:** Tested via in-memory `HttpMessageHandler` streams without opening local TCP sockets or hitting the GitHub API. Validates release JSON parsing, version comparisons, package SHA256 integrity checks, and detached helper script generation.
+- The entire test suite (84+ tests) executes in under **1 second** on local developer machines and CI runners with **0 external dependencies**.
 
 ### 2. OS Integration Contract Tests (`OsIntegrationContractTests.cs`)
 To prevent silent integration failures at the Windows OS boundary, dedicated contract tests verify:

@@ -231,14 +231,16 @@
 
     <Grid Margin="15">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- Title & Theme -->
-            <RowDefinition Height="Auto"/> <!-- Settings Group -->
-            <RowDefinition Height="*"/>    <!-- Process List -->
-            <RowDefinition Height="Auto"/> <!-- Checkboxes -->
-            <RowDefinition Height="Auto"/> <!-- Start Button -->
-            <RowDefinition Height="Auto"/> <!-- Footer -->
+            <RowDefinition Height="Auto"/> <!-- 0: Title & Theme -->
+            <RowDefinition Height="Auto"/> <!-- 1: Update Banner -->
+            <RowDefinition Height="Auto"/> <!-- 2: Settings Group -->
+            <RowDefinition Height="*"/>    <!-- 3: Process List -->
+            <RowDefinition Height="Auto"/> <!-- 4: Checkboxes -->
+            <RowDefinition Height="Auto"/> <!-- 5: Start Button -->
+            <RowDefinition Height="Auto"/> <!-- 6: Footer -->
         </Grid.RowDefinitions>
 
+        <!-- Header -->
         <Grid Grid.Row="0" Margin="0,0,0,15">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <Image Source="Assets/app_icon.ico" Width="28" Height="28" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -255,8 +257,52 @@
             </StackPanel>
         </Grid>
 
+        <!-- In-App Auto-Update Banner -->
+        <Border Grid.Row="1" x:Name="UpdateBanner" Visibility="Collapsed" 
+                Background="{DynamicResource SectionBackground}" 
+                BorderBrush="#009688" BorderThickness="1.5" CornerRadius="8" 
+                Padding="14,12" Margin="0,0,0,15">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- Title & Dismiss -->
+                    <RowDefinition Height="Auto"/> <!-- Description / Notes -->
+                    <RowDefinition Height="Auto"/> <!-- Progress Bar -->
+                    <RowDefinition Height="Auto"/> <!-- Buttons & Status -->
+                </Grid.RowDefinitions>
+
+                <!-- Row 0: Header with Close Button -->
+                <Grid Grid.Row="0">
+                    <TextBlock x:Name="UpdateBannerTitle" Text="🚀 Update Available" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextForeground}" VerticalAlignment="Center"/>
+                    <Button Content="✕" Click="DismissUpdateBanner_Click" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                            Background="Transparent" Foreground="{DynamicResource SecondaryTextForeground}" 
+                            BorderThickness="0" Cursor="Hand" FontSize="13" Padding="6,2" ToolTip="Dismiss Banner"/>
+                </Grid>
+
+                <!-- Row 1: Release notes snippet -->
+                <TextBlock Grid.Row="1" x:Name="UpdateBannerNotes" Text="A newer version of ReVibranceGUI is available." 
+                           Foreground="{DynamicResource SecondaryTextForeground}" FontSize="12" Margin="0,4,0,10" 
+                           TextWrapping="Wrap"/>
+
+                <!-- Row 2: Progress Section (Hidden initially) -->
+                <StackPanel Grid.Row="2" x:Name="UpdateProgressPanel" Visibility="Collapsed" Margin="0,0,0,8">
+                    <ProgressBar x:Name="UpdateProgressBar" Height="6" Minimum="0" Maximum="100" Value="0" 
+                                 Foreground="#009688" Background="{DynamicResource WindowBackground}" BorderThickness="0"/>
+                    <TextBlock x:Name="UpdateProgressText" Text="Downloading..." FontSize="11" Foreground="{DynamicResource SecondaryTextForeground}" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <!-- Row 3: Action Buttons & Error -->
+                <DockPanel Grid.Row="3" LastChildFill="False">
+                    <Button x:Name="InstallUpdateButton" Content="Update &amp; Restart" Style="{StaticResource AccentButton}" 
+                            Click="InstallUpdateButton_Click" Padding="12,5" FontSize="12" Height="30" Margin="0,0,8,0"/>
+                    <Button x:Name="ViewReleaseNotesButton" Content="View Release Notes" Style="{StaticResource SecondaryButton}" 
+                            Click="ViewReleaseNotesButton_Click" Padding="10,5" FontSize="12" Height="30" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="UpdateStatusError" Foreground="#E57373" FontSize="11" VerticalAlignment="Center" Visibility="Collapsed" TextWrapping="Wrap" Margin="8,0,0,0"/>
+                </DockPanel>
+            </Grid>
+        </Border>
+
         <!-- Settings Group -->
-        <Border Grid.Row="1" Background="{DynamicResource SectionBackground}" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+        <Border Grid.Row="2" Background="{DynamicResource SectionBackground}" CornerRadius="8" Padding="15" Margin="0,0,0,15">
             <StackPanel>
                 <TextBlock Text="Global Settings" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextForeground}" Margin="0,0,0,15"/>
                 
@@ -273,7 +319,7 @@
         </Border>
 
         <!-- Monitored Games -->
-        <Border Grid.Row="2" Background="{DynamicResource SectionBackground}" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+        <Border Grid.Row="3" Background="{DynamicResource SectionBackground}" CornerRadius="8" Padding="15" Margin="0,0,0,15">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -409,7 +455,7 @@
         </Border>
 
         <!-- Application Behavior -->
-        <StackPanel Grid.Row="3" Margin="0,0,0,20">
+        <StackPanel Grid.Row="4" Margin="0,0,0,20">
             <CheckBox x:Name="RunOnStartupCheckBox" Content="Run on Startup" Foreground="{DynamicResource TextForeground}" Margin="0,0,0,8" Checked="RunOnStartupCheckBox_Checked" Unchecked="RunOnStartupCheckBox_Unchecked"/>
             <CheckBox x:Name="AutoStartMonitoringCheckBox" Content="Auto-start monitoring on startup" Foreground="{DynamicResource TextForeground}" Margin="20,0,0,8" IsEnabled="{Binding ElementName=RunOnStartupCheckBox, Path=IsChecked}"/>
             <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Minimize to system tray when monitoring" Foreground="{DynamicResource TextForeground}" Margin="0,0,0,8"/>
@@ -428,10 +474,10 @@
         </StackPanel>
 
         <!-- Action Area -->
-        <Button Grid.Row="4" x:Name="ToggleAutomationButton" Content="START MONITORING" Style="{StaticResource AccentButton}" Height="45" FontSize="16" Margin="0,0,0,15" Click="ToggleAutomationButton_Click"/>
+        <Button Grid.Row="5" x:Name="ToggleAutomationButton" Content="START MONITORING" Style="{StaticResource AccentButton}" Height="45" FontSize="16" Margin="0,0,0,15" Click="ToggleAutomationButton_Click"/>
 
         <!-- Footer -->
-        <Grid Grid.Row="5" Margin="-15,0,-15,-15">
+        <Grid Grid.Row="6" Margin="-15,0,-15,-15">
             <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SecondaryButtonBackground}" Background="{DynamicResource SectionBackground}" Padding="15,6">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -445,7 +491,7 @@
                         <TextBlock x:Name="HardwareText" Text="Searching for GPU..." FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextForeground}" Margin="0,0,8,0"/>
                         <TextBlock x:Name="VersionText" Text="v1.0.0" FontSize="11" Foreground="{DynamicResource SecondaryTextForeground}" Margin="0,0,15,0" VerticalAlignment="Center"/>
                         <TextBlock x:Name="UpdateTextBlock" Visibility="Collapsed" FontSize="12">
-                            <Hyperlink NavigateUri="https://github.com/roscocheeta/re-vibrance-gui/releases/latest" RequestNavigate="Hyperlink_RequestNavigate" Foreground="#009688" TextDecorations="None" FontWeight="Bold">
+                            <Hyperlink Click="UpdateHyperlink_Click" Foreground="#009688" TextDecorations="None" FontWeight="Bold" Cursor="Hand">
                                 🎁 Update Available!
                             </Hyperlink>
                         </TextBlock>
