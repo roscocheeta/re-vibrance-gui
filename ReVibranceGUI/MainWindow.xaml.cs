@@ -33,6 +33,8 @@ namespace ReVibranceGUI
         private GlobalHotkey? _pauseHotkey;
         private bool _isInitializing = true;
         private bool _syncInFlight;
+        private readonly IUpdateService _updateService;
+        private UpdateInfo? _pendingUpdate;
 
         // Serialises vendor-driver calls: the sync poll reads off the UI thread while ApplyProfile writes on it.
         private readonly object _hardwareLock = new();
@@ -44,9 +46,14 @@ namespace ReVibranceGUI
 
         private readonly bool _launchedOnStartup;
 
-        public MainWindow(bool isStartup = false)
+        public MainWindow(bool isStartup = false) : this(isStartup, new UpdateService())
+        {
+        }
+
+        internal MainWindow(bool isStartup, IUpdateService updateService)
         {
             _launchedOnStartup = isStartup;
+            _updateService = updateService;
             InitializeComponent();
             DataContext = this;
 
@@ -181,30 +188,115 @@ namespace ReVibranceGUI
         {
             try
             {
-                using var client = new System.Net.Http.HttpClient();
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("ReVibranceGUI-Updater/1.0");
-                client.Timeout = TimeSpan.FromSeconds(5);
+                var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0);
+                _pendingUpdate = await _updateService.CheckForUpdateAsync(currentVersion);
 
-                var response = await client.GetStringAsync("https://api.github.com/repos/roscocheeta/re-vibrance-gui/releases/latest");
-                using var doc = System.Text.Json.JsonDocument.Parse(response);
-                if (doc.RootElement.TryGetProperty("tag_name", out var tagProp))
+                if (_pendingUpdate != null)
                 {
-                    string tagName = tagProp.GetString() ?? "";
-                    if (tagName.StartsWith("v")) tagName = tagName.Substring(1);
-
-                    if (Version.TryParse(tagName, out Version? latestVersion))
+                    Dispatcher.Invoke(() =>
                     {
-                        var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-                        if (currentVersion != null && latestVersion > currentVersion)
-                        {
-                            Dispatcher.Invoke(() => UpdateTextBlock.Visibility = Visibility.Visible);
-                        }
-                    }
+                        UpdateBannerTitle.Text = $"🚀 Update Available: {_pendingUpdate.TagName}";
+                        UpdateBannerNotes.Text = FormatReleaseNotesSnippet(_pendingUpdate.ReleaseNotes);
+                        UpdateBanner.Visibility = Visibility.Visible;
+                        UpdateTextBlock.Visibility = Visibility.Visible;
+                    });
                 }
             }
             catch (Exception ex)
             {
                 Logger.Warn("Failed to check for updates", ex);
+            }
+        }
+
+        private static string FormatReleaseNotesSnippet(string notes)
+        {
+            if (string.IsNullOrWhiteSpace(notes))
+            {
+                return "A newer version of ReVibranceGUI is available with improvements and fixes.";
+            }
+
+            var lines = notes.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                             .Select(l => l.Trim().TrimStart('#', '-', '*', ' '))
+                             .Where(l => !string.IsNullOrWhiteSpace(l))
+                             .Take(2);
+
+            string snippet = string.Join(" • ", lines);
+            if (snippet.Length > 160)
+            {
+                snippet = snippet.Substring(0, 157) + "...";
+            }
+
+            return string.IsNullOrWhiteSpace(snippet)
+                ? "A newer version of ReVibranceGUI is available with improvements and fixes."
+                : snippet;
+        }
+
+        private void DismissUpdateBanner_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateBanner.Visibility = Visibility.Collapsed;
+        }
+
+        private void UpdateHyperlink_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateBanner.Visibility = Visibility.Visible;
+        }
+
+        private void ViewReleaseNotesButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string url = !string.IsNullOrEmpty(_pendingUpdate?.HtmlUrl)
+                    ? _pendingUpdate.HtmlUrl
+                    : "https://github.com/roscocheeta/re-vibrance-gui/releases/latest";
+
+                if (Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+                    (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp))
+                {
+                    Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to open release notes link", ex);
+            }
+        }
+
+        private async void InstallUpdateButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_pendingUpdate == null)
+            {
+                return;
+            }
+
+            InstallUpdateButton.IsEnabled = false;
+            ViewReleaseNotesButton.IsEnabled = false;
+            UpdateStatusError.Visibility = Visibility.Collapsed;
+            UpdateProgressPanel.Visibility = Visibility.Visible;
+            UpdateProgressBar.Value = 0;
+            UpdateProgressText.Text = "Starting download...";
+
+            var progress = new Progress<UpdateProgress>(p =>
+            {
+                UpdateProgressBar.Value = p.Percentage;
+                UpdateProgressText.Text = p.StatusMessage;
+            });
+
+            try
+            {
+                string stagingDir = await _updateService.DownloadAndPrepareUpdateAsync(_pendingUpdate, progress: progress);
+                UpdateProgressText.Text = "Applying update & restarting...";
+                await Task.Delay(500);
+                _updateService.ApplyUpdateAndRestart(stagingDir);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Update installation failed", ex);
+                UpdateProgressPanel.Visibility = Visibility.Collapsed;
+                InstallUpdateButton.IsEnabled = true;
+                InstallUpdateButton.Content = "Retry Update";
+                ViewReleaseNotesButton.IsEnabled = true;
+                UpdateStatusError.Text = $"Failed: {ex.Message}";
+                UpdateStatusError.Visibility = Visibility.Visible;
             }
         }
 
@@ -408,6 +500,7 @@ namespace ReVibranceGUI
 
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
+            (_updateService as IDisposable)?.Dispose();
             base.OnClosed(e);
         }
 

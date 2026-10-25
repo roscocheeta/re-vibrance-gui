@@ -6,6 +6,10 @@ updates:
     schedule:
       interval: "weekly"
     target-branch: "dev"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   # Maintain dependencies for .NET (NuGet)
   - package-ecosystem: "nuget"
@@ -13,9 +17,17 @@ updates:
     schedule:
       interval: "weekly"
     target-branch: "dev"
+    groups:
+      nuget-app:
+        patterns:
+          - "*"
 
   - package-ecosystem: "nuget"
     directory: "/ReVibranceGUI.Tests"
     schedule:
       interval: "weekly"
     target-branch: "dev"
+    groups:
+      nuget-tests:
+        patterns:
+          - "*"

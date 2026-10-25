@@ -36,7 +36,7 @@ This project is a complete C# WPF / .NET 8 architectural rewrite of the original
 - **Auto-Start Monitoring:** Automatically begin monitoring games when ReVibranceGUI launches.
 - **System Tray Controls:** Right-click the system tray icon to pause, resume, or exit the application.
 - **Global Pause Hotkey:** Easily pause and resume vibrance adjustments using a custom global keyboard shortcut.
-- **Auto-Update Notifications:** Automatically notifies you when a new version of ReVibranceGUI is available.
+- **Native In-App Auto-Updater:** Automatically checks for GitHub releases, displays an interactive in-app update banner with release notes, verifies package SHA256 integrity, and applies updates with a single click without requiring UAC elevation for user-space installations.
 
 ---
 
@@ -51,6 +51,7 @@ This project is a complete C# WPF / .NET 8 architectural rewrite of the original
    - **Semantic CodeQL Analysis:** Analyzes data flows to guarantee untrusted inputs cannot reach process execution or file writes without sanitization.
 4. **Unified Math Engine:** NVIDIA, AMD, and Intel APIs scale vibrance differently. The core `VibranceMath` engine normalizes them into a unified, predictable `0%` to `100%` scale for the UI.
 5. **Multi-Monitor Awareness:** Target vibrance changes strictly to your *Primary* monitor, or broadcast them across *All* connected monitors.
+6. **Secure Native Auto-Updater:** In-app updates query the GitHub Releases API, stream the download with live progress reporting, verify SHA256 checksums before unpacking, and execute an atomic, detached PowerShell updater script that handles process termination, retries, and restarts.
 
 ---
 
