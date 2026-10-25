@@ -83,7 +83,7 @@ namespace ReVibranceGUI.Services
                     p.VibranceLevel = VibranceMath.ClampUi(p.VibranceLevel);
                     p.DisplayName ??= p.ExeName;
                     p.ExePath ??= string.Empty;
-                    
+
                     // Cap string lengths
                     if (p.DisplayName.Length > 255) p.DisplayName = p.DisplayName.Substring(0, 255);
                     if (p.ExeName.Length > 255) p.ExeName = p.ExeName.Substring(0, 255);

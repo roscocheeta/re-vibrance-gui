@@ -14,6 +14,11 @@ indent_size = 2
 csharp_style_namespace_declarations = block_scoped:suggestion
 dotnet_sort_system_directives_first = true
 
+# WPF Analyzers configuration
+dotnet_diagnostic.WPF0041.severity = suggestion
+dotnet_diagnostic.WPF0001.severity = warning
+dotnet_diagnostic.WPF0002.severity = warning
+
 # Third-party AMD ADL interop copied from upstream vibranceGUI.
 # Treated as generated code so nullable/style warnings don't fail our build.
 [ReVibranceGUI/AMD/vendor/**.cs]

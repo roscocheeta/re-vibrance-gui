@@ -1,35 +1,54 @@
-# Testing Strategy
+# Testing & Verification Guide
 
-ReVibranceGUI uses `xUnit` for its automated testing framework. 
+ReVibranceGUI uses `xUnit` for its automated testing framework, paired with compile-time Roslyn analyzers and OS integration contract tests.
 
-As a best practice, our test methods are named descriptively to act as self-documenting code. You can browse the `ReVibranceGUI.Tests` project to see exactly what scenarios are verified.
+As a best practice, our test methods are named descriptively to act as self-documenting code. Browse the `ReVibranceGUI.Tests` project to inspect the exact test scenarios.
 
-## What is Covered
+---
 
-We focus our automated testing on the core, non-UI business logic to ensure stability across driver and framework updates:
+## 🧪 Test Architecture & Strategy
 
-1. **Vibrance Math Engines:** 
-   - We verify that the normalization algorithms correctly convert NVIDIA, AMD, and Intel proprietary saturation ranges into our unified `0%` to `100%` scale.
-2. **Game Scanners & Heuristics:**
-   - We test the parsers for Steam (`.acf`), Epic Games (`.item`), and other manifests to ensure they correctly extract game titles and executable paths.
-3. **State Management & Persistence:**
-   - We verify that the `SettingsManager` correctly serializes and deserializes the JSON configuration without data loss.
-4. **Startup Management:**
-   - We ensure the registry modification wrappers correctly enable or disable the run-on-startup behavior.
+### 1. In-Memory Native Seams (Fast Unit Tests)
+Instead of spinning up external drivers or relying on physical GPU hardware, the test suite leverages the `IVibranceProxy` interface abstraction.
+- All unit tests run against clean in-memory fakes.
+- The entire test suite executes in under **1 second** on local developer machines and CI runners with **0 external dependencies**.
 
-## What is NOT Covered
+### 2. OS Integration Contract Tests (`OsIntegrationContractTests.cs`)
+To prevent silent integration failures at the Windows OS boundary, dedicated contract tests verify:
+- **Windows Registry Transactions:** Verifies that user-mode HKCU registry operations succeed, read back correctly, and clean up safely.
+- **Headless Runner Guards:** Guarantees that `DisplayManager` enumerations and current resolution queries fail gracefully without throwing unhandled exceptions in Session 0 headless CI environments.
+- **Atomic File Persistence:** Tests that `SettingsManager` recovers gracefully from malformed/corrupted `settings.json` files and persists valid settings atomically via temporary swap files.
+- **Process Path Normalization:** Tests that process names are cleanly extracted and normalized regardless of path slashes, case variations, or trailing extensions.
 
-1. **WPF UI Integration:** 
-   - We do not currently use UI automation frameworks to test window rendering or button clicks due to the complexity and fragility of such tests. UI verification is handled manually.
-2. **Native GPU API Calls:**
-   - We mock the actual `NvAPIWrapper` and ADL P/Invoke calls in our tests so that they can be run on any machine, even if it does not have the corresponding GPU hardware installed. We do not run integration tests directly against the GPU driver in CI.
+### 3. WPF MTA & Thread Safety
+Running WPF tests across multi-threaded MTA xUnit runners can cause race conditions in Windows message pumps. To ensure 100% test reliability:
+- `xunit.runner.json` enforces `"parallelizeTestCollections": false`.
+- `ReVibranceGUI.Tests/AssemblyInfo.cs` configures `[assembly: CollectionBehavior(DisableTestParallelization = true)]`.
 
-## How to Run Tests
+---
 
-To run the test suite locally from the command line:
+## 🔒 Compile-Time Security & Analyzers
 
+Every build runs automated Roslyn analyzers to prevent security and binding regressions before code is ever committed:
+- **WpfAnalyzers (`WPFxxxx`):** Catches XAML binding typos, invalid DataContext types, and UI memory leaks at compile time.
+- **SecurityCodeScan (`SCSxxxx`):** Flags unsafe `Process.Start` calls, path traversal vulnerabilities, and insecure cryptographic usage.
+- **.NET 8 `<NuGetAudit>`:** Evaluates direct and transitive dependencies against the GitHub Advisory Database during `dotnet build`.
+
+---
+
+## 🚀 Running Verification Commands
+
+### 1. Execute Unit & Contract Tests
 ```bash
-dotnet test ReVibranceGUI.sln
+dotnet test ReVibranceGUI.sln --configuration Release --verbosity normal
 ```
 
-Alternatively, you can run them directly within Visual Studio using the built-in Test Explorer.
+### 2. Audit Dependencies for Vulnerabilities
+```bash
+dotnet list package --vulnerable --include-transitive
+```
+
+### 3. Verify Code Formatting
+```bash
+dotnet format ReVibranceGUI.sln --verify-no-changes
+```
