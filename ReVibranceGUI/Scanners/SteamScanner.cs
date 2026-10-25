@@ -159,7 +159,7 @@ namespace ReVibranceGUI.Scanners
         private string FindPrimaryExecutable(string installPath)
         {
             if (!Directory.Exists(installPath)) return null;
-            
+
             // Reject relative paths/traversal (e.g. "..")
             if (installPath.Contains("..")) return null;
 
