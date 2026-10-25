@@ -263,11 +263,15 @@ namespace ReVibranceGUI
                 Visible = true
             };
 
-            // C3: Assembly.Location is the .dll on .NET 8; use the real exe path.
-            string? exePath = Environment.ProcessPath;
-            if (!string.IsNullOrEmpty(exePath))
+            string iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "app_icon.ico");
+            if (System.IO.File.Exists(iconPath))
             {
-                icon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(exePath);
+                // Load the exact icon frame matching the system tray metrics for the current DPI scaling
+                icon.Icon = new System.Drawing.Icon(iconPath, System.Windows.Forms.SystemInformation.SmallIconSize);
+            }
+            else if (!string.IsNullOrEmpty(Environment.ProcessPath))
+            {
+                icon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath);
             }
 
             var contextMenu = new System.Windows.Forms.ContextMenuStrip();
